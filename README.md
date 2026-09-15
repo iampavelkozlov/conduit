@@ -12,6 +12,7 @@ favorites, and personalized feeds through an OpenAPI-first HTTP API.
 [![Coverage](https://github.com/iampavelkozlov/conduit/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/iampavelkozlov/conduit/actions/workflows/coverage.yml)
 [![Generated Code](https://github.com/iampavelkozlov/conduit/actions/workflows/generated.yml/badge.svg?branch=main)](https://github.com/iampavelkozlov/conduit/actions/workflows/generated.yml)
 [![Build](https://github.com/iampavelkozlov/conduit/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/iampavelkozlov/conduit/actions/workflows/build.yml)
+[![Release](https://github.com/iampavelkozlov/conduit/actions/workflows/release.yml/badge.svg)](https://github.com/iampavelkozlov/conduit/actions/workflows/release.yml)
 
 ## Code quality
 
@@ -67,12 +68,13 @@ Requirements: Go, Docker with Compose, and `make`.
 
 ```bash
 docker-compose up -d
-make migrate
-go run ./cmd/server --addr :8000
 ```
 
 The API is available under `http://localhost:8000/api`; Prometheus metrics are
-available at `http://localhost:8000/metrics`.
+available at `http://localhost:8000/metrics`. Compose pulls
+`ghcr.io/iampavelkozlov/conduit:latest`, waits for PostgreSQL, applies all Goose
+migrations, and then starts the API. Override `CONDUIT_IMAGE` to run a pinned
+version. For a locally built image, also set `CONDUIT_PULL_POLICY=never`.
 
 Runtime settings are loaded from `config/config.yaml` and can be overridden by
 environment variables:
@@ -91,6 +93,26 @@ environment variables:
 The checked-in configuration is intended for local development. Supply unique
 secrets, TLS-enabled database connectivity, and an explicit CORS allowlist in
 production.
+
+## Releases
+
+Pushing a semantic-version tag publishes release binaries and a multi-platform
+container image:
+
+```bash
+git tag -a v1.0.0 -m "v1.0.0"
+git push origin v1.0.0
+```
+
+The release workflow verifies quality and generated files, creates Linux and
+macOS archives for amd64/arm64, creates a Windows amd64 archive, publishes a
+`SHA256SUMS` file, and pushes Linux amd64/arm64 images to GitHub Container
+Registry. Stable versions receive version, major/minor, major, and `latest`
+tags; prereleases do not move `latest`.
+
+The GHCR package must be public for anonymous Compose pulls. If it remains
+private, authenticate once with `docker login ghcr.io` before starting the
+stack.
 
 ## Development commands
 
