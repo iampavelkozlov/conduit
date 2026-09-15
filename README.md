@@ -15,12 +15,15 @@ favorites, and personalized feeds through an OpenAPI-first HTTP API.
 
 ## Code quality
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/iampavelkozlov/conduit)](https://goreportcard.com/report/github.com/iampavelkozlov/conduit)
+[![Local Go Report Card](docs/goreportcard.svg)](https://github.com/gojp/goreportcard)
+[![Handwritten Go LOC](docs/loc.svg)](docs/loc.svg)
 [![Go version](https://img.shields.io/github/go-mod/go-version/iampavelkozlov/conduit)](go.mod)
 
 The repository enforces a balanced `golangci-lint` configuration and explicit
 layer boundaries with `go-arch-lint`. Generated code is reproducible and is
-checked for uncommitted differences in CI.
+checked for uncommitted differences in CI. The report-card and LOC badges are
+generated locally with `make badges`; generated Go sources are excluded from
+the LOC count.
 
 ## Test coverage
 
@@ -94,6 +97,7 @@ production.
 ```bash
 make quality      # lint, architecture checks, tests, and coverage gate
 make coverage     # coverage report and docs/coverage.svg
+make badges       # local Go Report Card and handwritten Go LOC badges
 make generate     # OpenAPI, sqlc, mocks, metrics wrapper, and Wire
 make arch-graph   # docs/architecture.svg
 ```
