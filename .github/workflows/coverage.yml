@@ -30,3 +30,6 @@ jobs:
 
       - name: Enforce coverage threshold
         run: make coverage
+
+      - name: Verify coverage badge is current
+        run: git diff --exit-code -- docs/coverage.svg

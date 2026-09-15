@@ -16,6 +16,7 @@ SQLC := $(shell go env GOPATH)/bin/sqlc
 MIGRATIONS_DIR := migrations
 DB_DSN ?= postgres://postgres:postgres@localhost:5432/conduit?sslmode=disable
 COVERAGE_PROFILE ?= coverage.out
+COVERAGE_BADGE ?= docs/coverage.svg
 
 .PHONY: oapi-codegen gen-http go-wrap goose-install migrate sqlc-install sqlc wire mocks wrap generate golangci-lint-install lint go-arch-lint-install arch-lint arch-graph go-test-coverage-install coverage quality
 
@@ -83,6 +84,6 @@ go-test-coverage-install:
 
 coverage: go-test-coverage-install
 	go test ./... -covermode=atomic -coverprofile=$(COVERAGE_PROFILE)
-	$(GO_TEST_COVERAGE) --config .testcoverage.yml --profile $(COVERAGE_PROFILE)
+	$(GO_TEST_COVERAGE) --config .testcoverage.yml --profile $(COVERAGE_PROFILE) --badge-file-name $(COVERAGE_BADGE)
 
 quality: lint arch-lint coverage
