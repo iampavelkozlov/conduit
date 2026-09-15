@@ -1,0 +1,17 @@
+profile: coverage.out
+
+threshold:
+  file: 0
+  package: 0
+  total: 95.1
+
+# Generated sources are verified through their inputs and integration tests.
+# They must not dilute coverage of code maintained by hand.
+exclude:
+  paths:
+    - (^|/)internal/gen/
+    - (^|/)mock_[^/]*\.go$
+    - (^|/)wire_gen\.go$
+    - (^|/)querier_metrics_gen\.go$
+
+force-annotation-comment: true

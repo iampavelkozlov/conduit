@@ -1,0 +1,96 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+  relative-path-mode: gomod
+
+linters:
+  default: standard
+  enable:
+    - asasalint
+    - bodyclose
+    - canonicalheader
+    - contextcheck
+    - cyclop
+    - dupl
+    - durationcheck
+    - errorlint
+    - fatcontext
+    - forcetypeassert
+    - gocritic
+    - gosec
+    - intrange
+    - misspell
+    - modernize
+    - nilerr
+    - nilnesserr
+    - noctx
+    - nosprintfhostport
+    - perfsprint
+    - revive
+    - rowserrcheck
+    - sloglint
+    - sqlclosecheck
+    - testifylint
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+  settings:
+    cyclop:
+      max-complexity: 20
+      package-average: 10
+    dupl:
+      threshold: 150
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    misspell:
+      locale: US
+    revive:
+      confidence: 0.8
+    sloglint:
+      context: scope
+      static-msg: true
+      key-naming-case: snake
+      no-global: all
+    testifylint:
+      enable-all: true
+  exclusions:
+    generated: strict
+    presets:
+      - common-false-positives
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - gosec
+          - unparam
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - conduit
+  exclusions:
+    generated: strict
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  sort-order:
+    - linter
+    - file

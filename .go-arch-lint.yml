@@ -1,0 +1,106 @@
+version: 3
+workdir: .
+
+allow:
+  depOnAnyVendor: false
+  deepScan: true
+  ignoreNotFoundComponents: false
+
+exclude:
+  - .git
+  - .gomodcache
+  - apitests
+  - docs
+  - migrations
+  - wrap
+
+excludeFiles:
+  - "^.*_test\\.go$"
+  - "^.*mock_.*\\.go$"
+
+vendors:
+  config: { in: github.com/ilyakaznacheev/cleanenv }
+  crypto:
+    in:
+      - github.com/golang-jwt/jwt/**
+      - golang.org/x/crypto/**
+  database: { in: github.com/jackc/pgx/** }
+  di: { in: github.com/google/wire }
+  observability: { in: github.com/prometheus/client_golang/** }
+  utilities:
+    in:
+      - github.com/google/uuid
+      - github.com/gosimple/slug
+  web:
+    in:
+      - github.com/getkin/kin-openapi/**
+      - github.com/go-chi/**
+      - github.com/oapi-codegen/**
+
+components:
+  composition: { in: cmd/** }
+  configuration: { in: internal/config }
+  logging: { in: internal/logger }
+  api: { in: internal/gen/http }
+  models: { in: internal/models }
+  repository:
+    in:
+      - internal/gen/postgres
+      - internal/repository/**
+      - internal/storage/**
+  service: { in: internal/service/** }
+  transport: { in: internal/transport/** }
+
+deps:
+  composition:
+    mayDependOn:
+      - api
+      - configuration
+      - logging
+      - repository
+      - service
+      - transport
+    canUse:
+      - database
+      - di
+      - observability
+      - web
+  configuration:
+    canUse:
+      - config
+  logging:
+    mayDependOn:
+      - configuration
+  api:
+    canUse:
+      - web
+  models:
+    canUse:
+      - utilities
+  repository:
+    mayDependOn:
+      - logging
+      - repository
+    canUse:
+      - database
+      - observability
+  service:
+    mayDependOn:
+      - configuration
+      - models
+      - repository
+      - service
+    canUse:
+      - crypto
+      - database
+      - utilities
+  transport:
+    mayDependOn:
+      - api
+      - models
+      - service
+    canUse:
+      - database
+      - observability
+      - utilities
+      - web

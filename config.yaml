@@ -1,0 +1,9 @@
+# yaml-language-server: ...
+package: api
+generate:
+  chi-server: true
+  strict-server: true
+  models: true
+  client: true
+  embedded-spec: true
+output: ./internal/gen/http/server.go

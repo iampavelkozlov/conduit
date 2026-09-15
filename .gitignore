@@ -1,0 +1,23 @@
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Local databases
+.data/
+
+# Env / local config
+.env
+
+# Go caches / build artifacts
+.gocache/
+.gomodcache/
+bin/
+*.test
+*.out
+coverage.html
+/server
+/main
+
+# Logs
+*.log
