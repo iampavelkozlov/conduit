@@ -21,21 +21,22 @@ import (
 var errRepository = errors.New("repository failure")
 
 type serviceMocks struct {
-	repo        *Mockrepository
-	users       *MockUserService
-	tags        *MockTagService
-	articleTags *MockArticleTagService
-	favorites   *MockFavoriteService
-	follows     *MockFollowService
+	repo         *Mockrepository
+	transactions *Mocktransactions
+	users        *MockUserService
+	tags         *MockTagService
+	articleTags  *MockArticleTagService
+	favorites    *MockFavoriteService
+	follows      *MockFollowService
 }
 
 func newServiceMocks(t *testing.T) (*Service, serviceMocks) {
 	ctrl := gomock.NewController(t)
 	mocks := serviceMocks{
-		repo: NewMockrepository(ctrl), users: NewMockUserService(ctrl), tags: NewMockTagService(ctrl),
+		repo: NewMockrepository(ctrl), transactions: NewMocktransactions(ctrl), users: NewMockUserService(ctrl), tags: NewMockTagService(ctrl),
 		articleTags: NewMockArticleTagService(ctrl), favorites: NewMockFavoriteService(ctrl), follows: NewMockFollowService(ctrl),
 	}
-	return New(mocks.repo, mocks.users, mocks.tags, mocks.articleTags, mocks.favorites, mocks.follows), mocks
+	return New(mocks.repo, mocks.transactions, mocks.users, mocks.tags, mocks.articleTags, mocks.favorites, mocks.follows), mocks
 }
 
 func TestGetArticlesUsesBatchEnrichment(t *testing.T) {
@@ -167,7 +168,7 @@ func TestCreateArticleBatchesAndDeduplicatesTags(t *testing.T) {
 	articleID := uuid.New()
 	tagID := uuid.New()
 	service, mocks := newServiceMocks(t)
-	expectTransaction(mocks.repo)
+	expectTransaction(mocks.transactions, mocks.repo)
 	mocks.repo.EXPECT().CreateArticle(gomock.Any(), gomock.Any()).Return(shared.UUIDToPG(articleID), nil)
 	mocks.repo.EXPECT().UpsertTags(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, params postgres.UpsertTagsParams) ([]postgres.Tag, error) {
 		require.Equal(t, []string{"go"}, params.Names)
@@ -309,10 +310,56 @@ func TestEnrichFailureStages(t *testing.T) {
 	}
 }
 
-func expectTransaction(repo *Mockrepository) {
-	repo.EXPECT().WithinTx(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, operation func(repository) error) error {
-		return operation(repo)
+func expectTransaction(transactions *Mocktransactions, repo *Mockrepository) {
+	transactions.EXPECT().WithTx(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, operation func(postgres.Querier) error) error {
+		return operation(articleQuerierAdapter{repository: repo})
 	})
+}
+
+type articleQuerierAdapter struct {
+	postgres.Querier
+	repository repository
+}
+
+//nolint:gocritic // The generated postgres.Querier contract passes these parameters by value.
+func (a articleQuerierAdapter) CreateArticle(ctx context.Context, params postgres.CreateArticleParams) (pgtype.UUID, error) {
+	return a.repository.CreateArticle(ctx, params)
+}
+
+func (a articleQuerierAdapter) GetArticleBySlug(ctx context.Context, slug string) (postgres.Article, error) {
+	return a.repository.GetArticleBySlug(ctx, slug)
+}
+
+func (a articleQuerierAdapter) GetArticleIDBySlug(ctx context.Context, slug string) (pgtype.UUID, error) {
+	return a.repository.GetArticleIDBySlug(ctx, slug)
+}
+
+func (a articleQuerierAdapter) ListArticles(ctx context.Context, params postgres.ListArticlesParams) ([]postgres.Article, error) {
+	return a.repository.ListArticles(ctx, params)
+}
+
+func (a articleQuerierAdapter) CountArticles(ctx context.Context, params postgres.CountArticlesParams) (int64, error) {
+	return a.repository.CountArticles(ctx, params)
+}
+
+func (a articleQuerierAdapter) UpdateArticle(ctx context.Context, params postgres.UpdateArticleParams) (pgtype.UUID, error) {
+	return a.repository.UpdateArticle(ctx, params)
+}
+
+func (a articleQuerierAdapter) DeleteArticleBySlugAndAuthorID(ctx context.Context, params postgres.DeleteArticleBySlugAndAuthorIDParams) (int64, error) {
+	return a.repository.DeleteArticleBySlugAndAuthorID(ctx, params)
+}
+
+func (a articleQuerierAdapter) UpsertTags(ctx context.Context, params postgres.UpsertTagsParams) ([]postgres.Tag, error) {
+	return a.repository.UpsertTags(ctx, params)
+}
+
+func (a articleQuerierAdapter) AttachTagsToArticle(ctx context.Context, params postgres.AttachTagsToArticleParams) error {
+	return a.repository.AttachTagsToArticle(ctx, params)
+}
+
+func (a articleQuerierAdapter) DeleteArticleTags(ctx context.Context, articleID pgtype.UUID) error {
+	return a.repository.DeleteArticleTags(ctx, articleID)
 }
 
 func expectEnrichment(m serviceMocks, articleID, authorID, tagID uuid.UUID, authenticated bool) {
@@ -486,27 +533,27 @@ func TestUpdateArticle(t *testing.T) {
 		{name: "rejects null tag list", request: models.UpdateArticleRequest{Article: models.UpdateArticle{TagListSet: true}}, setup: func(serviceMocks) {}, wantErr: shared.ErrValidation},
 		{name: "requires authentication", setup: func(serviceMocks) {}, wantErr: shared.ErrUnauthorized},
 		{name: "propagates transaction error", auth: true, setup: func(m serviceMocks) {
-			m.repo.EXPECT().WithinTx(gomock.Any(), gomock.Any()).Return(errRepository)
+			m.transactions.EXPECT().WithTx(gomock.Any(), gomock.Any()).Return(errRepository)
 		}, wantErr: errRepository},
 		{name: "propagates owner lookup error", auth: true, setup: func(m serviceMocks) {
-			expectTransaction(m.repo)
+			expectTransaction(m.transactions, m.repo)
 			m.repo.EXPECT().GetArticleBySlug(gomock.Any(), "slug").Return(postgres.Article{}, errRepository)
 		}, wantErr: errRepository},
 		{name: "propagates update error", auth: true, setup: func(m serviceMocks) {
-			expectTransaction(m.repo)
+			expectTransaction(m.transactions, m.repo)
 			current := articleRow(articleID, ownerID)
 			m.repo.EXPECT().GetArticleBySlug(gomock.Any(), "slug").Return(current, nil)
 			m.repo.EXPECT().UpdateArticle(gomock.Any(), gomock.Any()).Return(pgtype.UUID{}, errRepository)
 		}, wantErr: errRepository},
 		{name: "propagates tag deletion error", auth: true, request: models.UpdateArticleRequest{Article: models.UpdateArticle{TagListSet: true, TagList: &tags}}, setup: func(m serviceMocks) {
-			expectTransaction(m.repo)
+			expectTransaction(m.transactions, m.repo)
 			current := articleRow(articleID, ownerID)
 			m.repo.EXPECT().GetArticleBySlug(gomock.Any(), "slug").Return(current, nil)
 			m.repo.EXPECT().UpdateArticle(gomock.Any(), gomock.Any()).Return(shared.UUIDToPG(articleID), nil)
 			m.repo.EXPECT().DeleteArticleTags(gomock.Any(), shared.UUIDToPG(articleID)).Return(errRepository)
 		}, wantErr: errRepository},
 		{name: "updates fields without replacing tags", auth: true, request: models.UpdateArticleRequest{Article: models.UpdateArticle{TitleSet: true, Title: &newTitle}}, setup: func(m serviceMocks) {
-			expectTransaction(m.repo)
+			expectTransaction(m.transactions, m.repo)
 			current := articleRow(articleID, ownerID)
 			m.repo.EXPECT().GetArticleBySlug(gomock.Any(), "slug").Return(current, nil)
 			m.repo.EXPECT().UpdateArticle(gomock.Any(), postgres.UpdateArticleParams{Slug: "slug", Title: newTitle, Description: current.Description, Body: current.Body}).Return(shared.UUIDToPG(articleID), nil)
@@ -551,19 +598,19 @@ func TestCreateArticleErrors(t *testing.T) {
 	}{
 		{name: "requires authentication", setup: func(serviceMocks) {}, wantErr: shared.ErrUnauthorized},
 		{name: "propagates transaction error", auth: true, setup: func(m serviceMocks) {
-			m.repo.EXPECT().WithinTx(gomock.Any(), gomock.Any()).Return(errRepository)
+			m.transactions.EXPECT().WithTx(gomock.Any(), gomock.Any()).Return(errRepository)
 		}, wantErr: errRepository},
 		{name: "propagates create error", auth: true, setup: func(m serviceMocks) {
-			expectTransaction(m.repo)
+			expectTransaction(m.transactions, m.repo)
 			m.repo.EXPECT().CreateArticle(gomock.Any(), gomock.Any()).Return(pgtype.UUID{}, errRepository)
 		}, wantErr: errRepository},
 		{name: "propagates tag upsert error", auth: true, setup: func(m serviceMocks) {
-			expectTransaction(m.repo)
+			expectTransaction(m.transactions, m.repo)
 			m.repo.EXPECT().CreateArticle(gomock.Any(), gomock.Any()).Return(shared.UUIDToPG(articleID), nil)
 			m.repo.EXPECT().UpsertTags(gomock.Any(), gomock.Any()).Return(nil, errRepository)
 		}, wantErr: errRepository},
 		{name: "propagates tag attach error", auth: true, setup: func(m serviceMocks) {
-			expectTransaction(m.repo)
+			expectTransaction(m.transactions, m.repo)
 			m.repo.EXPECT().CreateArticle(gomock.Any(), gomock.Any()).Return(shared.UUIDToPG(articleID), nil)
 			m.repo.EXPECT().UpsertTags(gomock.Any(), gomock.Any()).Return([]postgres.Tag{{ID: shared.UUIDToPG(tagID)}}, nil)
 			m.repo.EXPECT().AttachTagsToArticle(gomock.Any(), gomock.Any()).Return(errRepository)

@@ -52,6 +52,9 @@ The HTTP transport depends on application services, services depend on narrow
 repository interfaces, and PostgreSQL implementations remain behind those
 interfaces. Related entities are loaded in bounded batches and assembled in the
 service layer to avoid both N+1 access patterns and oversized SQL queries.
+Multi-step article writes and user registration use `Transactions.WithTx`; the callback receives the
+same generated repository interface bound to a transaction, while the pool,
+transaction handle, commit, and rollback remain in repository infrastructure.
 
 ![Architecture dependency graph](docs/architecture.svg)
 

@@ -17,16 +17,17 @@ import (
 )
 
 type Service struct {
-	repo        repository
-	users       UserService
-	tags        TagService
-	articleTags ArticleTagService
-	favorites   FavoriteService
-	follows     FollowService
+	repo         repository
+	transactions transactions
+	users        UserService
+	tags         TagService
+	articleTags  ArticleTagService
+	favorites    FavoriteService
+	follows      FollowService
 }
 
-func New(repo repository, users UserService, tags TagService, articleTags ArticleTagService, favorites FavoriteService, follows FollowService) *Service {
-	return &Service{repo: repo, users: users, tags: tags, articleTags: articleTags, favorites: favorites, follows: follows}
+func New(repo repository, transactions transactions, users UserService, tags TagService, articleTags ArticleTagService, favorites FavoriteService, follows FollowService) *Service {
+	return &Service{repo: repo, transactions: transactions, users: users, tags: tags, articleTags: articleTags, favorites: favorites, follows: follows}
 }
 
 func (s *Service) CreateArticle(ctx context.Context, req models.NewArticleRequest) (*models.SingleArticleResponse, error) {
@@ -38,7 +39,7 @@ func (s *Service) CreateArticle(ctx context.Context, req models.NewArticleReques
 		return nil, shared.ErrUnauthorized
 	}
 	slug := shared.GenerateSlug(req.Article.Title)
-	err = s.repo.WithinTx(ctx, func(repo repository) error {
+	err = s.transactions.WithTx(ctx, func(repo postgres.Querier) error {
 		created, createErr := repo.CreateArticle(ctx, postgres.CreateArticleParams{
 			ID: shared.NewUUID(), AuthorID: shared.UUIDToPG(authorID), Slug: slug,
 			Title: req.Article.Title, Description: req.Article.Description, Body: req.Article.Body,
@@ -65,7 +66,7 @@ func (s *Service) UpdateArticle(ctx context.Context, slug string, req models.Upd
 	if err != nil {
 		return nil, shared.ErrUnauthorized
 	}
-	err = s.repo.WithinTx(ctx, func(repo repository) error {
+	err = s.transactions.WithTx(ctx, func(repo postgres.Querier) error {
 		current, ownerErr := requireOwner(ctx, repo, slug, userID)
 		if ownerErr != nil {
 			return ownerErr

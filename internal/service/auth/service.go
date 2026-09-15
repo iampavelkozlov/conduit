@@ -20,18 +20,20 @@ import (
 )
 
 type Service struct {
-	userRepo    UserRepository
-	sessionRepo SessionRepository
-	tokenMgr    TokenManagerIface
-	passwordMgr PasswordManagerIface
+	userRepo     UserRepository
+	sessionRepo  SessionRepository
+	transactions transactions
+	tokenMgr     TokenManagerIface
+	passwordMgr  PasswordManagerIface
 }
 
-func New(repo Repository, cfg config.AuthConfig) *Service {
+func New(repo Repository, transactions transactions, cfg config.AuthConfig) *Service {
 	return &Service{
-		userRepo:    repo,
-		sessionRepo: repo,
-		tokenMgr:    NewTokenManager(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
-		passwordMgr: NewPasswordManager(cfg.PasswordPepper),
+		userRepo:     repo,
+		sessionRepo:  repo,
+		transactions: transactions,
+		tokenMgr:     NewTokenManager(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
+		passwordMgr:  NewPasswordManager(cfg.PasswordPepper),
 	}
 }
 
@@ -40,14 +42,16 @@ func New(repo Repository, cfg config.AuthConfig) *Service {
 func NewWithDeps(
 	userRepo UserRepository,
 	sessionRepo SessionRepository,
+	transactions transactions,
 	tokenMgr TokenManagerIface,
 	passwordMgr PasswordManagerIface,
 ) *Service {
 	return &Service{
-		userRepo:    userRepo,
-		sessionRepo: sessionRepo,
-		tokenMgr:    tokenMgr,
-		passwordMgr: passwordMgr,
+		userRepo:     userRepo,
+		sessionRepo:  sessionRepo,
+		transactions: transactions,
+		tokenMgr:     tokenMgr,
+		passwordMgr:  passwordMgr,
 	}
 }
 
@@ -66,17 +70,24 @@ func (s *Service) CreateUser(ctx context.Context, req models.NewUserRequest) (*m
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	user, err := s.userRepo.CreateUser(ctx, postgres.CreateUserParams{
-		ID:           shared.NewUUID(),
-		Email:        req.User.Email,
-		Username:     req.User.Username,
-		PasswordHash: passwordHash,
+	var response *models.UserResponse
+	err = s.transactions.WithTx(ctx, func(repo postgres.Querier) error {
+		user, createErr := repo.CreateUser(ctx, postgres.CreateUserParams{
+			ID:           shared.NewUUID(),
+			Email:        req.User.Email,
+			Username:     req.User.Username,
+			PasswordHash: passwordHash,
+		})
+		if createErr != nil {
+			return fmt.Errorf("create user: %w", createErr)
+		}
+		response, createErr = s.issueTokensForUser(ctx, &user, repo)
+		return createErr
 	})
 	if err != nil {
-		return nil, fmt.Errorf("create user: %w", err)
+		return nil, err
 	}
-
-	return s.issueTokensForUser(ctx, &user)
+	return response, nil
 }
 
 func (s *Service) Login(ctx context.Context, req models.LoginUserRequest) (*models.UserResponse, error) {
@@ -102,7 +113,7 @@ func (s *Service) Login(ctx context.Context, req models.LoginUserRequest) (*mode
 		return nil, invalidCredentials()
 	}
 
-	return s.issueTokensForUser(ctx, &user)
+	return s.issueTokensForUser(ctx, &user, s.sessionRepo)
 }
 
 func (s *Service) RefreshToken(ctx context.Context, accessToken, refreshToken string) (*models.UserResponse, error) {
@@ -150,12 +161,12 @@ func (s *Service) ValidateAccessToken(token string) (*TokenClaims, error) {
 	return s.tokenMgr.ValidateAccessToken(token)
 }
 
-func (s *Service) issueTokensForUser(ctx context.Context, user *postgres.User) (*models.UserResponse, error) {
+func (s *Service) issueTokensForUser(ctx context.Context, user *postgres.User, sessions SessionRepository) (*models.UserResponse, error) {
 	response, session, err := s.newTokenSession(user)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.sessionRepo.CreateSession(ctx, session); err != nil {
+	if err := sessions.CreateSession(ctx, session); err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
 	}
 	return response, nil

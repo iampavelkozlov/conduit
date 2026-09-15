@@ -25,7 +25,7 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 		providePanicReporter,
 		provideQueries,
 		provideQueryDecorator,
-		provideArticleRepository,
+		provideTransactions,
 		provideAuthService,
 		provideFollowService,
 		provideFavoriteService,

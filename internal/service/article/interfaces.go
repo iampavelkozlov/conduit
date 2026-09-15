@@ -12,7 +12,6 @@ import (
 
 //go:generate go run go.uber.org/mock/mockgen -source=interfaces.go -destination=mock_article.go -package=article
 type repository interface {
-	WithinTx(context.Context, func(repository) error) error
 	CreateArticle(context.Context, postgres.CreateArticleParams) (pgtype.UUID, error)
 	GetArticleBySlug(context.Context, string) (postgres.Article, error)
 	GetArticleIDBySlug(context.Context, string) (pgtype.UUID, error)
@@ -23,6 +22,10 @@ type repository interface {
 	UpsertTags(context.Context, postgres.UpsertTagsParams) ([]postgres.Tag, error)
 	AttachTagsToArticle(context.Context, postgres.AttachTagsToArticleParams) error
 	DeleteArticleTags(context.Context, pgtype.UUID) error
+}
+
+type transactions interface {
+	WithTx(context.Context, func(postgres.Querier) error) error
 }
 
 type UserService interface {

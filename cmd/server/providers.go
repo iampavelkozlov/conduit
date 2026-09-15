@@ -9,6 +9,7 @@ import (
 	"conduit/internal/gen/postgres"
 	"conduit/internal/logger"
 	repositorymetrics "conduit/internal/repository/metrics"
+	"conduit/internal/repository/transaction"
 	"conduit/internal/service/article"
 	"conduit/internal/service/articletag"
 	"conduit/internal/service/auth"
@@ -86,27 +87,27 @@ func provideQueryDecorator(metrics *repositorymetrics.Metrics) func(postgres.Que
 	return metrics.Wrap
 }
 
-func provideArticleRepository(
+func provideTransactions(
 	pool *pgxpool.Pool,
-	queries postgres.Querier,
 	decorate func(postgres.Querier) postgres.Querier,
-) *article.PostgresRepository {
-	return article.NewPostgresRepository(pool, queries, decorate)
+) *transaction.Transactions {
+	return transaction.New(pool, decorate)
 }
 
 func provideArticleService(
-	repository *article.PostgresRepository,
+	repository postgres.Querier,
+	transactions *transaction.Transactions,
 	users *user.Service,
 	tags *tag.Service,
 	articleTags *articletag.Service,
 	favorites *favorite.Service,
 	follows *follow.Service,
 ) *article.Service {
-	return article.New(repository, users, tags, articleTags, favorites, follows)
+	return article.New(repository, transactions, users, tags, articleTags, favorites, follows)
 }
 
-func provideAuthService(queries postgres.Querier, cfg *config.Config) *auth.Service {
-	return auth.New(queries, cfg.Auth)
+func provideAuthService(queries postgres.Querier, transactions *transaction.Transactions, cfg *config.Config) *auth.Service {
+	return auth.New(queries, transactions, cfg.Auth)
 }
 
 func provideFollowService(queries postgres.Querier) *follow.Service {

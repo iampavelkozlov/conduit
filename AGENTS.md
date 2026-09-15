@@ -36,6 +36,7 @@ configuration out of the schema.
 - `internal/models/` — conversion between generated API DTOs and domain models.
 - `internal/repository/metrics/` — generated repository decorator and Prometheus
   metric registration.
+- `internal/repository/transaction/` — transaction lifecycle implementation.
 - `internal/service/` — business logic, split by domain.
 - `internal/service/shared/` — shared context, identifiers, and typed API errors.
 - `internal/storage/postgres/` — PostgreSQL pool initialization.
@@ -58,6 +59,9 @@ configuration out of the schema.
 - HTTP handlers decode requests, invoke services, map errors, and encode
   responses. Business rules belong in services.
 - Services depend on narrow interfaces defined in their package.
+- Keep transaction handles, pool operations, begin, commit, and rollback out of
+  services. Use `Transactions.WithTx`; only invoke methods on the repository
+  passed to its callback for work that must be atomic.
 - Keep repository metric labels bounded. Use generated Go method names and a
   fixed result label; never add SQL text, arguments, user IDs, slugs, or other
   unbounded values as Prometheus labels.

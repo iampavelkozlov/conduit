@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-//go:generate go run go.uber.org/mock/mockgen -destination=mock_auth.go -package=auth conduit/internal/service/auth UserRepository,SessionRepository,TokenManagerIface,PasswordManagerIface
+//go:generate go run go.uber.org/mock/mockgen -source=interfaces.go -destination=mock_auth.go -package=auth
 
 // UserRepository is the DB interface for user operations used by the auth service.
 type UserRepository interface {
@@ -28,6 +28,10 @@ type SessionRepository interface {
 type Repository interface {
 	UserRepository
 	SessionRepository
+}
+
+type transactions interface {
+	WithTx(context.Context, func(postgres.Querier) error) error
 }
 
 // TokenManagerIface generates and validates JWT tokens.

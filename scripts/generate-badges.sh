@@ -44,9 +44,12 @@ case "${grade}" in
 esac
 
 loc="$({
-  git -C "${repository_root}" ls-files '*.go' |
+  git -C "${repository_root}" ls-files --cached --others --exclude-standard '*.go' |
     awk '!/(^|\/)internal\/gen\// && !/(^|\/)mock_.*\.go$/ && !/(^|\/)wire_gen\.go$/ && !/(^|\/)querier_metrics_gen\.go$/' |
     while IFS= read -r source_file; do
+      if [[ ! -f "${repository_root}/${source_file}" ]]; then
+        continue
+      fi
       wc -l < "${repository_root}/${source_file}"
     done
 } | awk '{ total += $1 } END { print total + 0 }')"

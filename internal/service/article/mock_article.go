@@ -192,18 +192,42 @@ func (mr *MockrepositoryMockRecorder) UpsertTags(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertTags", reflect.TypeOf((*Mockrepository)(nil).UpsertTags), arg0, arg1)
 }
 
-// WithinTx mocks base method.
-func (m *Mockrepository) WithinTx(arg0 context.Context, arg1 func(repository) error) error {
+// Mocktransactions is a mock of transactions interface.
+type Mocktransactions struct {
+	ctrl     *gomock.Controller
+	recorder *MocktransactionsMockRecorder
+	isgomock struct{}
+}
+
+// MocktransactionsMockRecorder is the mock recorder for Mocktransactions.
+type MocktransactionsMockRecorder struct {
+	mock *Mocktransactions
+}
+
+// NewMocktransactions creates a new mock instance.
+func NewMocktransactions(ctrl *gomock.Controller) *Mocktransactions {
+	mock := &Mocktransactions{ctrl: ctrl}
+	mock.recorder = &MocktransactionsMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *Mocktransactions) EXPECT() *MocktransactionsMockRecorder {
+	return m.recorder
+}
+
+// WithTx mocks base method.
+func (m *Mocktransactions) WithTx(arg0 context.Context, arg1 func(postgres.Querier) error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WithinTx", arg0, arg1)
+	ret := m.ctrl.Call(m, "WithTx", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// WithinTx indicates an expected call of WithinTx.
-func (mr *MockrepositoryMockRecorder) WithinTx(arg0, arg1 any) *gomock.Call {
+// WithTx indicates an expected call of WithTx.
+func (mr *MocktransactionsMockRecorder) WithTx(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithinTx", reflect.TypeOf((*Mockrepository)(nil).WithinTx), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithTx", reflect.TypeOf((*Mocktransactions)(nil).WithTx), arg0, arg1)
 }
 
 // MockUserService is a mock of UserService interface.
