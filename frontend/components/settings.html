@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="settings-page"><div class="container page"><div class="row"><div class="col-md-6 offset-md-3 col-xs-12">
+  <h1 class="text-xs-center">Your Settings</h1>
+  {{if .Errors}}<ul class="error-messages">{{range .Errors}}<li>{{.}}</li>{{end}}</ul>{{end}}
+  <form method="post" action="/settings"><fieldset>
+    <fieldset class="form-group"><input class="form-control" name="image" type="url" value="{{index .Form "image"}}" placeholder="URL of profile picture"></fieldset>
+    <fieldset class="form-group"><input class="form-control form-control-lg" name="username" type="text" value="{{index .Form "username"}}" placeholder="Your Name" required></fieldset>
+    <fieldset class="form-group"><textarea class="form-control form-control-lg" name="bio" rows="8" placeholder="Short bio about you">{{index .Form "bio"}}</textarea></fieldset>
+    <fieldset class="form-group"><input class="form-control form-control-lg" name="email" type="email" value="{{index .Form "email"}}" placeholder="Email" required></fieldset>
+    <fieldset class="form-group"><input class="form-control form-control-lg" name="password" type="password" placeholder="New Password"></fieldset>
+    <button class="btn btn-lg btn-primary pull-xs-right" type="submit">Update Settings</button>
+  </fieldset></form>
+  <hr><form method="post" action="/logout"><button class="btn btn-outline-danger" type="submit">Or click here to logout.</button></form>
+</div></div></div></div>
+{{end}}

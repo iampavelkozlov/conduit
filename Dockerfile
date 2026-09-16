@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS server-builder
+FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS app-builder
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -12,12 +12,17 @@ RUN go mod download
 
 COPY cmd ./cmd
 COPY config ./config
+COPY frontend ./frontend
 COPY internal ./internal
 
 RUN export CGO_ENABLED=0 \
       GOOS="${TARGETOS:-$(go env GOOS)}" \
       GOARCH="${TARGETARCH:-$(go env GOARCH)}" && \
     go build -trimpath -ldflags="-s -w" -o /out/conduit ./cmd/server
+RUN export CGO_ENABLED=0 \
+      GOOS="${TARGETOS:-$(go env GOOS)}" \
+      GOARCH="${TARGETARCH:-$(go env GOARCH)}" && \
+    go build -trimpath -ldflags="-s -w" -o /out/frontend ./cmd/frontend
 
 FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS goose-builder
 
@@ -46,14 +51,16 @@ RUN apk add --no-cache ca-certificates tzdata && \
 
 WORKDIR /app
 
-COPY --from=server-builder /out/conduit /app/conduit
+COPY --from=app-builder /out/conduit /app/conduit
+COPY --from=app-builder /out/frontend /app/frontend
 COPY --from=goose-builder /out/goose /app/goose
 COPY --chown=conduit:conduit config/config.yaml /app/config/config.yaml
+COPY --chown=conduit:conduit config/frontend.yaml /app/config/frontend.yaml
 COPY --chown=conduit:conduit migrations /app/migrations
 
 USER conduit:conduit
 
-EXPOSE 8000
+EXPOSE 3000 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD wget --quiet --spider http://127.0.0.1:8000/metrics || exit 1

@@ -1,0 +1,39 @@
+{{define "content"}}
+<div class="home-page">
+  <div class="banner">
+    <div class="container">
+      <h1 class="logo-font">conduit</h1>
+      <p>A place to share your knowledge.</p>
+    </div>
+  </div>
+  <div class="container page">
+    <div class="row">
+      <div class="col-md-9">
+        <div class="feed-toggle">
+          <ul class="nav nav-pills outline-active">
+            {{if .User}}<li class="nav-item"><a class="nav-link {{if eq .Feed "following"}}active{{end}}" href="/?feed=following">Your Feed</a></li>{{end}}
+            <li class="nav-item"><a class="nav-link {{if and (not .ActiveTag) (ne .Feed "following")}}active{{end}}" href="/">Global Feed</a></li>
+            {{if .ActiveTag}}<li class="nav-item"><a class="nav-link active" href="/?tag={{.ActiveTag}}"><i class="ion-pound"></i> {{.ActiveTag}}</a></li>{{end}}
+          </ul>
+        </div>
+        {{template "article-list" .}}
+        {{if gt (len .Pages) 1}}
+        <ul class="pagination">
+          {{range .Pages}}
+          <li class="page-item {{if eq . $.PageNumber}}active{{end}}"><a class="page-link" href="/?page={{.}}{{if $.ActiveTag}}&amp;tag={{$.ActiveTag}}{{end}}">{{.}}</a></li>
+          {{end}}
+        </ul>
+        {{end}}
+      </div>
+      <div class="col-md-3">
+        <div class="sidebar">
+          <p>Popular Tags</p>
+          <div class="tag-list">
+            {{range .Tags}}<a href="/?tag={{.}}" class="tag-pill tag-default">{{.}}</a>{{else}}No tags yet.{{end}}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}

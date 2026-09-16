@@ -1,3 +1,6 @@
+x-conduit-image: &conduit-image
+  image: ${CONDUIT_IMAGE:-conduit:local}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -20,8 +23,8 @@ services:
       start_period: 10s
 
   migrate:
-    image: ${CONDUIT_IMAGE:-ghcr.io/iampavelkozlov/conduit:latest}
-    pull_policy: ${CONDUIT_PULL_POLICY:-always}
+    <<: *conduit-image
+    pull_policy: never
     entrypoint: ["/app/goose"]
     command: ["up"]
     environment:
@@ -34,8 +37,10 @@ services:
     restart: "no"
 
   conduit:
-    image: ${CONDUIT_IMAGE:-ghcr.io/iampavelkozlov/conduit:latest}
-    pull_policy: ${CONDUIT_PULL_POLICY:-always}
+    <<: *conduit-image
+    build:
+      context: .
+    pull_policy: ${CONDUIT_PULL_POLICY:-build}
     restart: unless-stopped
     environment:
       DB_DSN: postgres://postgres:postgres@postgres:5432/conduit?sslmode=disable
@@ -51,3 +56,26 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+  frontend:
+    <<: *conduit-image
+    pull_policy: never
+    entrypoint: ["/app/frontend"]
+    command: ["--config=/app/config/frontend.yaml"]
+    restart: unless-stopped
+    environment:
+      FRONTEND_API_URL: http://conduit:8000/api
+      FRONTEND_LOG_LEVEL: ${FRONTEND_LOG_LEVEL:-info}
+      FRONTEND_LOG_FORMAT: ${FRONTEND_LOG_FORMAT:-json}
+      FRONTEND_COOKIE_SECURE: ${FRONTEND_COOKIE_SECURE:-false}
+    ports:
+      - "3000:3000"
+    depends_on:
+      conduit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

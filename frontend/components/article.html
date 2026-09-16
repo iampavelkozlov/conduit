@@ -1,0 +1,46 @@
+{{define "content"}}
+<div class="article-page">
+  <div class="banner">
+    <div class="container">
+      <h1>{{.Article.Title}}</h1>
+      {{template "article-meta" .}}
+    </div>
+  </div>
+  <div class="container page">
+    <div class="row article-content">
+      <div class="col-md-12">
+        <p style="white-space: pre-wrap">{{.Article.Body}}</p>
+        <ul class="tag-list">{{range .Article.TagList}}<li class="tag-default tag-pill tag-outline">{{.}}</li>{{end}}</ul>
+      </div>
+    </div>
+    <hr>
+    <div class="article-actions">{{template "article-meta" .}}</div>
+    <div class="row">
+      <div class="col-xs-12 col-md-8 offset-md-2">
+        {{if .User}}
+        <form class="card comment-form" method="post" action="/article/{{.Article.Slug}}/comments">
+          <div class="card-block"><textarea class="form-control" name="body" placeholder="Write a comment..." rows="3" required></textarea></div>
+          <div class="card-footer"><img src="{{image .User.Image}}" class="comment-author-img" alt=""><button class="btn btn-sm btn-primary" type="submit">Post Comment</button></div>
+        </form>
+        {{else}}<p><a href="/login">Sign in</a> or <a href="/register">sign up</a> to add comments.</p>{{end}}
+        {{range .Comments}}
+        <div class="card">
+          <div class="card-block"><p class="card-text">{{.Body}}</p></div>
+          <div class="card-footer">
+            <a href="/profile/{{.Author.Username}}" class="comment-author"><img src="{{image .Author.Image}}" class="comment-author-img" alt=""></a>
+            &nbsp;
+            <a href="/profile/{{.Author.Username}}" class="comment-author">{{.Author.Username}}</a>
+            <span class="date-posted">{{date .CreatedAt}}</span>
+            {{if and $.User (eq $.User.Username .Author.Username)}}
+            <form method="post" action="/article/{{$.Article.Slug}}/comments/{{.Id}}/delete" class="mod-options"><button class="btn btn-link" type="submit"><i class="ion-trash-a"></i></button></form>
+            {{end}}
+          </div>
+        </div>
+        {{else}}
+        <p>No comments yet.</p>
+        {{end}}
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}

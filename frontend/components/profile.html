@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="profile-page">
+  <div class="user-info">
+    <div class="container">
+      <div class="row">
+        <div class="col-xs-12 col-md-10 offset-md-1">
+          <img src="{{image .Profile.Image}}" class="user-img" alt="">
+          <h4>{{.Profile.Username}}</h4>
+          {{if .Profile.Bio}}<p>{{.Profile.Bio}}</p>{{end}}
+          {{if .OwnProfile}}
+          <a class="btn btn-sm btn-outline-secondary action-btn" href="/settings"><i class="ion-gear-a"></i>&nbsp; Edit Profile Settings</a>
+          {{else if .User}}
+          <form method="post" action="/profile/{{.Profile.Username}}/follow"><input type="hidden" name="follow" value="{{if .Profile.Following}}false{{else}}true{{end}}"><input type="hidden" name="return_to" value="{{.CurrentURL}}"><button class="btn btn-sm btn-outline-secondary action-btn" type="submit"><i class="ion-plus-round"></i>&nbsp; {{if .Profile.Following}}Unfollow{{else}}Follow{{end}} {{.Profile.Username}}</button></form>
+          {{else}}<a class="btn btn-sm btn-outline-secondary action-btn" href="/login"><i class="ion-plus-round"></i>&nbsp; Follow {{.Profile.Username}}</a>{{end}}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="row">
+      <div class="col-xs-12 col-md-10 offset-md-1">
+        <div class="articles-toggle">
+          <ul class="nav nav-pills outline-active">
+            <li class="nav-item"><a class="nav-link {{if not .Favorited}}active{{end}}" href="/profile/{{.Profile.Username}}">My Articles</a></li>
+            <li class="nav-item"><a class="nav-link {{if .Favorited}}active{{end}}" href="/profile/{{.Profile.Username}}?tab=favorites">Favorited Articles</a></li>
+          </ul>
+        </div>
+        {{template "article-list" .}}
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}
