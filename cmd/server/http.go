@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"strings"
 
 	"conduit/internal/config"
 	api "conduit/internal/gen/http"
+	"conduit/internal/metrics"
 	httptransport "conduit/internal/transport/http"
 	transportmiddleware "conduit/internal/transport/middleware"
 
@@ -17,20 +17,17 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	nethttpmiddleware "github.com/oapi-codegen/nethttp-middleware"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const maxRequestBodySize = 1 << 20
 
 func provideHTTPHandler(
 	cfg *config.Config,
-	logger *slog.Logger,
 	authMiddleware *transportmiddleware.AuthMiddleware,
-	httpMetrics *transportmiddleware.HTTPMetrics,
-	panicReporter transportmiddleware.PanicReporter,
+	httpMetrics *metrics.HTTP,
+	panicReporter metrics.PanicReporter,
 	server api.StrictServerInterface,
-	registry *prometheus.Registry,
+	registry *metrics.Registry,
 ) (http.Handler, error) {
 	spec, err := api.GetSwagger()
 	if err != nil {
@@ -41,14 +38,14 @@ func provideHTTPHandler(
 	spec.Servers = openapi3.Servers{new(openapi3.Server{URL: "/api"})}
 
 	strictHandler := api.NewStrictHandlerWithOptions(server, nil, api.StrictHTTPServerOptions{
-		ResponseErrorHandlerFunc: httptransport.NewResponseErrorHandler(logger),
+		ResponseErrorHandlerFunc: httptransport.NewResponseErrorHandler(),
 	})
 
 	router := chi.NewRouter()
 	router.Use(chimiddleware.RequestID)
 	router.Use(httpMetrics.Handler)
 	router.Use(httpMetrics.Recoverer(panicReporter))
-	router.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	router.Handle("/metrics", metrics.ScrapeHandler(registry))
 	router.Group(func(apiRouter chi.Router) {
 		apiRouter.Use(chimiddleware.RequestSize(maxRequestBodySize))
 		apiRouter.Use(transportmiddleware.JSONHeaders)

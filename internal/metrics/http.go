@@ -1,4 +1,4 @@
-package middleware
+package metrics
 
 import (
 	"encoding/json"
@@ -31,8 +31,8 @@ var (
 // Implementations must not panic.
 type PanicReporter func(r *http.Request, route string, recovered any, stack []byte)
 
-// HTTPMetrics owns bounded-cardinality metrics for the HTTP server.
-type HTTPMetrics struct {
+// HTTP owns bounded-cardinality metrics for the HTTP server.
+type HTTP struct {
 	requests     *prometheus.CounterVec
 	duration     *prometheus.HistogramVec
 	responseSize *prometheus.HistogramVec
@@ -40,9 +40,9 @@ type HTTPMetrics struct {
 	panics       *prometheus.CounterVec
 }
 
-// NewHTTPMetrics registers HTTP metrics in the supplied application registry.
-func NewHTTPMetrics(registerer prometheus.Registerer) (*HTTPMetrics, error) {
-	metrics := &HTTPMetrics{
+// NewHTTP registers HTTP metrics in the supplied application registry.
+func NewHTTP(registerer prometheus.Registerer) (*HTTP, error) {
+	metrics := &HTTP{
 		requests: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: "conduit",
 			Subsystem: "http",
@@ -99,7 +99,7 @@ func NewHTTPMetrics(registerer prometheus.Registerer) (*HTTPMetrics, error) {
 // Handler records standard HTTP request, latency, response size, and in-flight
 // metrics. The Prometheus scrape endpoint is excluded to avoid self-generated
 // traffic. Route templates are used instead of raw paths to bound cardinality.
-func (m *HTTPMetrics) Handler(next http.Handler) http.Handler {
+func (m *HTTP) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == metricsPath {
 			next.ServeHTTP(w, r)
@@ -128,7 +128,7 @@ func (m *HTTPMetrics) Handler(next http.Handler) http.Handler {
 // Recoverer converts handler panics into the canonical internal-error response,
 // reports the stack, and increments the panic counter. Register it after Handler
 // so recovered panics are also observed as HTTP 500 responses.
-func (m *HTTPMetrics) Recoverer(reporter PanicReporter) func(http.Handler) http.Handler {
+func (m *HTTP) Recoverer(reporter PanicReporter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {

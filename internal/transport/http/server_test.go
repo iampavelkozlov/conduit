@@ -3,7 +3,6 @@ package http
 import (
 	"errors"
 	"io"
-	"log/slog"
 	nethttp "net/http"
 	"net/http/httptest"
 	"strings"
@@ -82,13 +81,12 @@ func TestResponseErrorHandler(t *testing.T) {
 		{name: "unexpected", err: errors.New("boom"), wantStatus: nethttp.StatusInternalServerError, wantField: "body"},
 	}
 
-	logger := slog.New(slog.DiscardHandler)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			request := httptest.NewRequestWithContext(t.Context(), nethttp.MethodGet, "/api/test", nil)
 
-			NewResponseErrorHandler(logger)(recorder, request, tt.err)
+			NewResponseErrorHandler()(recorder, request, tt.err)
 
 			require.Equal(t, tt.wantStatus, recorder.Code)
 			require.Contains(t, recorder.Body.String(), `"`+tt.wantField+`"`)

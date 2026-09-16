@@ -8,7 +8,7 @@ import (
 	"conduit/internal/config"
 	"conduit/internal/gen/postgres"
 	"conduit/internal/logger"
-	repositorymetrics "conduit/internal/repository/metrics"
+	"conduit/internal/metrics"
 	"conduit/internal/repository/transaction"
 	"conduit/internal/service/article"
 	"conduit/internal/service/articletag"
@@ -19,12 +19,9 @@ import (
 	"conduit/internal/service/tag"
 	"conduit/internal/service/user"
 	pgstorage "conduit/internal/storage/postgres"
-	transportmiddleware "conduit/internal/transport/middleware"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
 type application struct {
@@ -48,24 +45,19 @@ func provideDatabase(ctx context.Context, cfg *config.Config, logger *slog.Logge
 	return pool, pool.Close, nil
 }
 
-func providePrometheusRegistry() *prometheus.Registry {
-	registry := prometheus.NewRegistry()
-	registry.MustRegister(
-		collectors.NewGoCollector(),
-		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
-	)
-	return registry
+func providePrometheusRegistry() *metrics.Registry {
+	return metrics.NewRegistry()
 }
 
-func provideRepositoryMetrics(registry *prometheus.Registry) (*repositorymetrics.Metrics, error) {
-	return repositorymetrics.New(registry)
+func provideRepositoryMetrics(registry *metrics.Registry) (*metrics.Repository, error) {
+	return metrics.NewRepository(registry)
 }
 
-func provideHTTPMetrics(registry *prometheus.Registry) (*transportmiddleware.HTTPMetrics, error) {
-	return transportmiddleware.NewHTTPMetrics(registry)
+func provideHTTPMetrics(registry *metrics.Registry) (*metrics.HTTP, error) {
+	return metrics.NewHTTP(registry)
 }
 
-func providePanicReporter(logger *slog.Logger) transportmiddleware.PanicReporter {
+func providePanicReporter(logger *slog.Logger) metrics.PanicReporter {
 	return func(r *http.Request, route string, recovered any, stack []byte) {
 		logger.ErrorContext(
 			r.Context(),
@@ -79,12 +71,12 @@ func providePanicReporter(logger *slog.Logger) transportmiddleware.PanicReporter
 	}
 }
 
-func provideQueries(pool *pgxpool.Pool, metrics *repositorymetrics.Metrics) postgres.Querier {
-	return metrics.Wrap(postgres.New(pool))
+func provideQueries(pool *pgxpool.Pool, repositoryMetrics *metrics.Repository) postgres.Querier {
+	return repositoryMetrics.Wrap(postgres.New(pool))
 }
 
-func provideQueryDecorator(metrics *repositorymetrics.Metrics) func(postgres.Querier) postgres.Querier {
-	return metrics.Wrap
+func provideQueryDecorator(repositoryMetrics *metrics.Repository) func(postgres.Querier) postgres.Querier {
+	return repositoryMetrics.Wrap
 }
 
 func provideTransactions(
@@ -102,34 +94,35 @@ func provideArticleService(
 	articleTags *articletag.Service,
 	favorites *favorite.Service,
 	follows *follow.Service,
+	logger *slog.Logger,
 ) *article.Service {
-	return article.New(repository, transactions, users, tags, articleTags, favorites, follows)
+	return article.New(repository, transactions, users, tags, articleTags, favorites, follows, logger)
 }
 
-func provideAuthService(queries postgres.Querier, transactions *transaction.Transactions, cfg *config.Config) *auth.Service {
-	return auth.New(queries, transactions, cfg.Auth)
+func provideAuthService(queries postgres.Querier, transactions *transaction.Transactions, cfg *config.Config, logger *slog.Logger) *auth.Service {
+	return auth.New(queries, transactions, cfg.Auth, logger)
 }
 
-func provideFollowService(queries postgres.Querier) *follow.Service {
-	return follow.New(queries)
+func provideFollowService(queries postgres.Querier, logger *slog.Logger) *follow.Service {
+	return follow.New(queries, logger)
 }
 
-func provideFavoriteService(queries postgres.Querier) *favorite.Service {
-	return favorite.New(queries)
+func provideFavoriteService(queries postgres.Querier, logger *slog.Logger) *favorite.Service {
+	return favorite.New(queries, logger)
 }
 
-func provideArticleTagService(queries postgres.Querier) *articletag.Service {
-	return articletag.New(queries)
+func provideArticleTagService(queries postgres.Querier, logger *slog.Logger) *articletag.Service {
+	return articletag.New(queries, logger)
 }
 
-func provideUserService(queries postgres.Querier, follows *follow.Service, cfg *config.Config) *user.Service {
-	return user.New(queries, follows, auth.NewPasswordManager(cfg.Auth.PasswordPepper))
+func provideUserService(queries postgres.Querier, follows *follow.Service, cfg *config.Config, logger *slog.Logger) *user.Service {
+	return user.New(queries, follows, auth.NewPasswordManager(cfg.Auth.PasswordPepper), logger)
 }
 
-func provideCommentService(queries postgres.Querier, users *user.Service) *comment.Service {
-	return comment.New(queries, users)
+func provideCommentService(queries postgres.Querier, users *user.Service, logger *slog.Logger) *comment.Service {
+	return comment.New(queries, users, logger)
 }
 
-func provideTagService(queries postgres.Querier) *tag.Service {
-	return tag.New(queries)
+func provideTagService(queries postgres.Querier, logger *slog.Logger) *tag.Service {
+	return tag.New(queries, logger)
 }

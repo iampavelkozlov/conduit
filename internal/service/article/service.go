@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"slices"
 
@@ -24,10 +25,11 @@ type Service struct {
 	articleTags  ArticleTagService
 	favorites    FavoriteService
 	follows      FollowService
+	logger       *slog.Logger
 }
 
-func New(repo repository, transactions transactions, users UserService, tags TagService, articleTags ArticleTagService, favorites FavoriteService, follows FollowService) *Service {
-	return &Service{repo: repo, transactions: transactions, users: users, tags: tags, articleTags: articleTags, favorites: favorites, follows: follows}
+func New(repo repository, transactions transactions, users UserService, tags TagService, articleTags ArticleTagService, favorites FavoriteService, follows FollowService, loggers ...*slog.Logger) *Service {
+	return &Service{repo: repo, transactions: transactions, users: users, tags: tags, articleTags: articleTags, favorites: favorites, follows: follows, logger: shared.ServiceLogger(loggers...)}
 }
 
 func (s *Service) CreateArticle(ctx context.Context, req models.NewArticleRequest) (*models.SingleArticleResponse, error) {
@@ -39,9 +41,10 @@ func (s *Service) CreateArticle(ctx context.Context, req models.NewArticleReques
 		return nil, shared.ErrUnauthorized
 	}
 	slug := shared.GenerateSlug(req.Article.Title)
+	articleID := shared.NewUUIDValue()
 	err = s.transactions.WithTx(ctx, func(repo postgres.Querier) error {
 		created, createErr := repo.CreateArticle(ctx, postgres.CreateArticleParams{
-			ID: shared.NewUUID(), AuthorID: shared.UUIDToPG(authorID), Slug: slug,
+			ID: shared.UUIDToPG(articleID), AuthorID: shared.UUIDToPG(authorID), Slug: slug,
 			Title: req.Article.Title, Description: req.Article.Description, Body: req.Article.Body,
 		})
 		if createErr != nil {
@@ -53,6 +56,9 @@ func (s *Service) CreateArticle(ctx context.Context, req models.NewArticleReques
 		return attachTags(ctx, repo, created, *req.Article.TagList)
 	})
 	if err != nil {
+		if !shared.IsExpectedError(err) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err, slog.String("article_id", articleID.String()), slog.String("author_id", authorID.String()))...)
+		}
 		return nil, err
 	}
 	return s.response(ctx, slug)
@@ -66,11 +72,13 @@ func (s *Service) UpdateArticle(ctx context.Context, slug string, req models.Upd
 	if err != nil {
 		return nil, shared.ErrUnauthorized
 	}
+	var articleID pgtype.UUID
 	err = s.transactions.WithTx(ctx, func(repo postgres.Querier) error {
 		current, ownerErr := requireOwner(ctx, repo, slug, userID)
 		if ownerErr != nil {
 			return ownerErr
 		}
+		articleID = current.ID
 		updated, updateErr := repo.UpdateArticle(ctx, postgres.UpdateArticleParams{
 			Slug: slug, Title: valueOr(req.Article.Title, current.Title),
 			Description: valueOr(req.Article.Description, current.Description), Body: valueOr(req.Article.Body, current.Body),
@@ -87,6 +95,13 @@ func (s *Service) UpdateArticle(ctx context.Context, slug string, req models.Upd
 		return attachTags(ctx, repo, updated, *req.Article.TagList)
 	})
 	if err != nil {
+		if !shared.IsExpectedError(err) {
+			attrs := []slog.Attr{slog.String("user_id", userID.String())}
+			if articleID.Valid {
+				attrs = append(attrs, shared.UUIDAttr("article_id", articleID))
+			}
+			s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err, attrs...)...)
+		}
 		return nil, err
 	}
 	return s.response(ctx, slug)
@@ -99,10 +114,14 @@ func (s *Service) DeleteArticle(ctx context.Context, slug string) error {
 	}
 	current, err := requireOwner(ctx, s.repo, slug, userID)
 	if err != nil {
+		if !errors.Is(err, shared.ErrNotFound) && !errors.Is(err, shared.ErrForbidden) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
+		}
 		return err
 	}
 	rows, err := s.repo.DeleteArticleBySlugAndAuthorID(ctx, postgres.DeleteArticleBySlugAndAuthorIDParams{Slug: slug, AuthorID: current.AuthorID})
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err, shared.UUIDAttr("article_id", current.ID), slog.String("user_id", userID.String()))...)
 		return err
 	}
 	if rows == 0 {
@@ -130,10 +149,14 @@ func (s *Service) changeFavorite(ctx context.Context, slug string, change func(c
 	}
 	articleID, err := s.repo.GetArticleIDBySlug(ctx, slug)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
+		}
 		return nil, mapArticleNotFound(err)
 	}
 	parsedArticleID, err := shared.PGToUUID(articleID)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "article uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("article_id", articleID), slog.String("user_id", userID.String()))...)
 		return nil, err
 	}
 	if err := change(ctx, parsedArticleID, userID); err != nil {
@@ -210,6 +233,7 @@ func (s *Service) list(ctx context.Context, filters articleFilters, limit, offse
 	queryFilters := filters.queryParams()
 	total, err := s.repo.CountArticles(ctx, queryFilters)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err, slog.Any("author_ids", filters.authorIDs), slog.Any("article_ids", filters.articleIDs))...)
 		return nil, err
 	}
 	if total == 0 {
@@ -221,6 +245,7 @@ func (s *Service) list(ctx context.Context, filters articleFilters, limit, offse
 		PageLimit: limit, PageOffset: offset,
 	})
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err, slog.Any("author_ids", filters.authorIDs), slog.Any("article_ids", filters.articleIDs))...)
 		return nil, err
 	}
 	articles, err := s.enrich(ctx, rows)
@@ -233,6 +258,9 @@ func (s *Service) list(ctx context.Context, filters articleFilters, limit, offse
 func (s *Service) response(ctx context.Context, slug string) (*models.SingleArticleResponse, error) {
 	row, err := s.repo.GetArticleBySlug(ctx, slug)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err)...)
+		}
 		return nil, mapArticleNotFound(err)
 	}
 	articles, err := s.enrich(ctx, []postgres.Article{row})
@@ -251,10 +279,12 @@ func (s *Service) enrich(ctx context.Context, rows []postgres.Article) ([]models
 	for i := range rows {
 		articleID, err := shared.PGToUUID(rows[i].ID)
 		if err != nil {
+			s.logger.LogAttrs(ctx, slog.LevelError, "article uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("article_id", rows[i].ID), shared.UUIDAttr("author_id", rows[i].AuthorID))...)
 			return nil, err
 		}
 		authorID, err := shared.PGToUUID(rows[i].AuthorID)
 		if err != nil {
+			s.logger.LogAttrs(ctx, slog.LevelError, "article uuid err", shared.ErrorAttrs(err, slog.String("article_id", articleID.String()), shared.UUIDAttr("author_id", rows[i].AuthorID))...)
 			return nil, err
 		}
 		articleIDs[i], authorIDs[i] = articleID, authorID
@@ -293,7 +323,9 @@ func (s *Service) enrich(ctx context.Context, rows []postgres.Article) ([]models
 		authorID := authorIDs[i]
 		profile, ok := profiles[authorID]
 		if !ok {
-			return nil, fmt.Errorf("profile for article author %s was not returned", authorID)
+			err := fmt.Errorf("profile for article author %s was not returned", authorID)
+			s.logger.LogAttrs(ctx, slog.LevelError, "article profile err", shared.ErrorAttrs(err, slog.String("article_id", articleID.String()), slog.String("author_id", authorID.String()))...)
+			return nil, err
 		}
 		tagIDs := tagIDsByArticle[articleID]
 		tagNames := make([]string, 0, len(tagIDs))

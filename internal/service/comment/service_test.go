@@ -1,7 +1,10 @@
 package comment
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +19,35 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+func TestCreateArticleCommentLogsRepositoryErrorWithUUIDs(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repo := NewMockrepository(ctrl)
+	users := NewMockUserService(ctrl)
+	authorID := uuid.New()
+	articleID := shared.NewUUID()
+	repoErr := errors.New("repository error")
+	repo.EXPECT().GetArticleIDBySlug(gomock.Any(), "slug").Return(articleID, nil)
+	repo.EXPECT().CreateComment(gomock.Any(), gomock.Any()).Return(postgres.CreateCommentRow{}, repoErr)
+
+	var output bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&output, nil))
+	_, err := New(repo, users, logger).CreateArticleComment(
+		shared.WithUserID(t.Context(), authorID),
+		"slug",
+		models.NewCommentRequest{Comment: models.NewComment{Body: "body"}},
+	)
+	require.ErrorIs(t, err, repoErr)
+
+	var record map[string]any
+	require.NoError(t, json.Unmarshal(output.Bytes(), &record))
+	require.Equal(t, "comment repo err", record["msg"])
+	require.Equal(t, repoErr.Error(), record["err"])
+	require.Equal(t, authorID.String(), record["author_id"])
+	parsedArticleID, parseErr := shared.PGToUUID(articleID)
+	require.NoError(t, parseErr)
+	require.Equal(t, parsedArticleID.String(), record["article_id"])
+}
 
 func TestGetArticleCommentsUsesBatchProfiles(t *testing.T) {
 	authorID := uuid.New()

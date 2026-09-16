@@ -1,4 +1,4 @@
-package repositorymetrics
+package metrics
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 func TestMetricsObserve(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	metrics, err := New(registry)
+	metrics, err := NewRepository(registry)
 	require.NoError(t, err)
 
 	_, err = metrics.Wrap(querierStub{}).ListTags(t.Context())
@@ -38,17 +38,17 @@ func (s querierStub) ListTags(context.Context) ([]string, error) {
 
 func TestMetricsRejectDuplicateRegistration(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	_, err := New(registry)
+	_, err := NewRepository(registry)
 	require.NoError(t, err)
 
-	_, err = New(registry)
+	_, err = NewRepository(registry)
 	require.Error(t, err)
 }
 
 func TestMetricsUnregistersCallsWhenDurationRegistrationFails(t *testing.T) {
 	registerer := &failingRegisterer{failAt: 2, err: errors.New("registration failed")}
 
-	metrics, err := New(registerer)
+	metrics, err := NewRepository(registerer)
 
 	require.ErrorIs(t, err, registerer.err)
 	require.Nil(t, metrics)

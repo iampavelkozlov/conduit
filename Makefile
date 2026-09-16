@@ -33,7 +33,7 @@ go-wrap:
 	go install github.com/hexdigest/gowrap/cmd/gowrap@$(GOWRAP_VERSION)
 
 wrap: go-wrap
-	go generate ./internal/repository/...
+	go generate ./internal/metrics
 
 goose-install:
 	go install github.com/pressly/goose/v3/cmd/goose@$(GOOSE_VERSION)

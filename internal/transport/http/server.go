@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 
@@ -62,10 +61,10 @@ func NewServer(svc *service.Service) api.StrictServerInterface {
 	return Server{svc: svc}
 }
 
-// NewResponseErrorHandler converts service errors to the canonical envelope and
-// logs unexpected failures without exposing their details to clients.
-func NewResponseErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *http.Request, error) {
-	return func(w http.ResponseWriter, r *http.Request, err error) {
+// NewResponseErrorHandler converts service errors to the canonical envelope
+// without exposing internal details to clients.
+func NewResponseErrorHandler() func(http.ResponseWriter, *http.Request, error) {
+	return func(w http.ResponseWriter, _ *http.Request, err error) {
 		status, field, message := http.StatusInternalServerError, "body", "internal server error"
 		if apiErr, ok := errors.AsType[*shared.APIError](err); ok {
 			status, field, message = apiErr.Status, apiErr.Field, apiErr.Message
@@ -84,9 +83,6 @@ func NewResponseErrorHandler(logger *slog.Logger) func(http.ResponseWriter, *htt
 			}
 		}
 
-		if status == http.StatusInternalServerError {
-			logger.ErrorContext(r.Context(), "request failed", "method", r.Method, "path", r.URL.Path, "error", err)
-		}
 		writeErrorResponse(w, status, field, message)
 	}
 }

@@ -1,4 +1,4 @@
-package middleware
+package metrics
 
 import (
 	"net/http"
@@ -48,7 +48,7 @@ func TestHTTPMetricsHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			registry := prometheus.NewRegistry()
-			metrics, err := NewHTTPMetrics(registry)
+			metrics, err := NewHTTP(registry)
 			require.NoError(t, err)
 
 			router := chi.NewRouter()
@@ -77,7 +77,7 @@ func TestHTTPMetricsHandler(t *testing.T) {
 
 func TestHTTPMetricsHandlerDefaultsStatusAndRoute(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	metrics, err := NewHTTPMetrics(registry)
+	metrics, err := NewHTTP(registry)
 	require.NoError(t, err)
 
 	handler := metrics.Handler(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
@@ -107,7 +107,7 @@ func TestMetricMethod(t *testing.T) {
 
 func TestHTTPMetricsRecoverer(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	metrics, err := NewHTTPMetrics(registry)
+	metrics, err := NewHTTP(registry)
 	require.NoError(t, err)
 
 	var recoveredValue any
@@ -151,7 +151,7 @@ func TestHTTPMetricsRecovererPassesThroughAndSupportsNilReporter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metrics, err := NewHTTPMetrics(prometheus.NewRegistry())
+			metrics, err := NewHTTP(prometheus.NewRegistry())
 			require.NoError(t, err)
 			handler := metrics.Recoverer(nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				if tt.panic {
@@ -168,7 +168,7 @@ func TestHTTPMetricsRecovererPassesThroughAndSupportsNilReporter(t *testing.T) {
 
 func TestHTTPMetricsSkipsScrapeEndpoint(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	metrics, err := NewHTTPMetrics(registry)
+	metrics, err := NewHTTP(registry)
 	require.NoError(t, err)
 
 	router := chi.NewRouter()
@@ -186,9 +186,9 @@ func TestHTTPMetricsSkipsScrapeEndpoint(t *testing.T) {
 
 func TestHTTPMetricsRejectDuplicateRegistration(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	_, err := NewHTTPMetrics(registry)
+	_, err := NewHTTP(registry)
 	require.NoError(t, err)
 
-	_, err = NewHTTPMetrics(registry)
+	_, err = NewHTTP(registry)
 	require.Error(t, err)
 }

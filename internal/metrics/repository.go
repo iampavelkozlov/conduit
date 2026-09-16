@@ -1,4 +1,4 @@
-package repositorymetrics
+package metrics
 
 import (
 	"fmt"
@@ -9,21 +9,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-//go:generate go tool gowrap gen -g -p conduit/internal/gen/postgres -i Querier -t ../../../wrap/prometheus.tpl -o querier_metrics_gen.go -l conduit
+//go:generate go tool gowrap gen -g -p conduit/internal/gen/postgres -i Querier -t ../../wrap/prometheus.tpl -o querier_metrics_gen.go -l conduit
 
 var repositoryDurationBuckets = []float64{
 	0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05,
 	0.1, 0.25, 0.5, 1, 2.5, 5,
 }
 
-// Metrics owns bounded-cardinality metrics for generated repository methods.
-type Metrics struct {
+// Repository owns bounded-cardinality metrics for generated repository methods.
+type Repository struct {
 	calls    *prometheus.CounterVec
 	duration *prometheus.HistogramVec
 }
 
-// New registers repository metrics in the supplied application registry.
-func New(registerer prometheus.Registerer) (*Metrics, error) {
+// NewRepository registers repository metrics in the supplied application registry.
+func NewRepository(registerer prometheus.Registerer) (*Repository, error) {
 	calls := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "conduit",
 		Subsystem: "repository",
@@ -45,15 +45,15 @@ func New(registerer prometheus.Registerer) (*Metrics, error) {
 		registerer.Unregister(calls)
 		return nil, fmt.Errorf("register repository duration metric: %w", err)
 	}
-	return &Metrics{calls: calls, duration: duration}, nil
+	return &Repository{calls: calls, duration: duration}, nil
 }
 
 // Wrap decorates any sqlc Querier, including transaction-bound query sets.
-func (m *Metrics) Wrap(querier postgres.Querier) postgres.Querier {
+func (m *Repository) Wrap(querier postgres.Querier) postgres.Querier {
 	return NewQuerierMetrics(querier, m)
 }
 
-func (m *Metrics) observe(method string, started time.Time, err error) {
+func (m *Repository) observe(method string, started time.Time, err error) {
 	result := "success"
 	if err != nil {
 		result = "error"

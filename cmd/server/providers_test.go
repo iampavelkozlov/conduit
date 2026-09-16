@@ -14,11 +14,11 @@ import (
 
 	"conduit/internal/config"
 	"conduit/internal/gen/postgres"
+	"conduit/internal/metrics"
 	"conduit/internal/service"
 	httptransport "conduit/internal/transport/http"
 	transportmiddleware "conduit/internal/transport/middleware"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,18 +52,18 @@ func TestSimpleProviders(t *testing.T) {
 	require.NotNil(t, provideQueries(nil, repositoryMetrics))
 	require.NotNil(t, provideQueryDecorator(repositoryMetrics)(querier))
 	transactions := provideTransactions(nil, func(value postgres.Querier) postgres.Querier { return value })
-	followService := provideFollowService(querier)
-	favoriteService := provideFavoriteService(querier)
-	articleTagService := provideArticleTagService(querier)
-	userService := provideUserService(querier, followService, cfg)
-	require.NotNil(t, provideArticleService(querier, transactions, userService, provideTagService(querier), articleTagService, favoriteService, followService))
-	require.NotNil(t, provideAuthService(querier, transactions, cfg))
-	require.NotNil(t, provideCommentService(querier, userService))
+	followService := provideFollowService(querier, logger)
+	favoriteService := provideFavoriteService(querier, logger)
+	articleTagService := provideArticleTagService(querier, logger)
+	userService := provideUserService(querier, followService, cfg, logger)
+	require.NotNil(t, provideArticleService(querier, transactions, userService, provideTagService(querier, logger), articleTagService, favoriteService, followService, logger))
+	require.NotNil(t, provideAuthService(querier, transactions, cfg, logger))
+	require.NotNil(t, provideCommentService(querier, userService, logger))
 	require.NotNil(t, followService)
 	require.NotNil(t, favoriteService)
 	require.NotNil(t, articleTagService)
 	require.NotNil(t, userService)
-	require.NotNil(t, provideTagService(querier))
+	require.NotNil(t, provideTagService(querier, logger))
 
 	reporter := providePanicReporter(slog.New(slog.DiscardHandler))
 	require.NotPanics(t, func() {
@@ -79,13 +79,12 @@ func TestProvideDatabaseRejectsInvalidDSN(t *testing.T) {
 }
 
 func TestProvideHTTPHandler(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	httpMetrics, err := transportmiddleware.NewHTTPMetrics(registry)
+	registry := metrics.NewRegistry()
+	httpMetrics, err := metrics.NewHTTP(registry)
 	require.NoError(t, err)
 	facade := service.New(nil, nil, nil, nil, nil)
 	handler, err := provideHTTPHandler(
 		&config.Config{HTTP: config.HTTPConfig{AllowedOrigins: []string{"*"}}},
-		slog.New(slog.DiscardHandler),
 		transportmiddleware.NewAuthMiddleware(facade),
 		httpMetrics,
 		providePanicReporter(slog.New(slog.DiscardHandler)),

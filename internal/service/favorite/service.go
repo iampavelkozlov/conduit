@@ -2,6 +2,7 @@ package favorite
 
 import (
 	"context"
+	"log/slog"
 
 	"conduit/internal/gen/postgres"
 	"conduit/internal/service/shared"
@@ -11,24 +12,39 @@ import (
 )
 
 // Service owns article_favorites and exposes its operations as domain methods.
-type Service struct{ repo repository }
+type Service struct {
+	repo   repository
+	logger *slog.Logger
+}
 
-func New(repo repository) *Service { return &Service{repo: repo} }
+func New(repo repository, loggers ...*slog.Logger) *Service {
+	return &Service{repo: repo, logger: shared.ServiceLogger(loggers...)}
+}
 func (s *Service) Add(ctx context.Context, articleID, userID uuid.UUID) error {
-	return s.repo.FavoriteArticle(ctx, postgres.FavoriteArticleParams{ArticleID: shared.UUIDToPG(articleID), UserID: shared.UUIDToPG(userID)})
+	err := s.repo.FavoriteArticle(ctx, postgres.FavoriteArticleParams{ArticleID: shared.UUIDToPG(articleID), UserID: shared.UUIDToPG(userID)})
+	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "favorite repo err", shared.ErrorAttrs(err, slog.String("article_id", articleID.String()), slog.String("user_id", userID.String()))...)
+	}
+	return err
 }
 func (s *Service) Remove(ctx context.Context, articleID, userID uuid.UUID) error {
-	return s.repo.UnfavoriteArticle(ctx, postgres.UnfavoriteArticleParams{ArticleID: shared.UUIDToPG(articleID), UserID: shared.UUIDToPG(userID)})
+	err := s.repo.UnfavoriteArticle(ctx, postgres.UnfavoriteArticleParams{ArticleID: shared.UUIDToPG(articleID), UserID: shared.UUIDToPG(userID)})
+	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "favorite repo err", shared.ErrorAttrs(err, slog.String("article_id", articleID.String()), slog.String("user_id", userID.String()))...)
+	}
+	return err
 }
 func (s *Service) ArticleIDsForUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	ids, err := s.repo.ListFavoriteArticleIDsByUserID(ctx, shared.UUIDToPG(userID))
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "favorite repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
 		return nil, err
 	}
 	out := make([]uuid.UUID, 0, len(ids))
 	for _, id := range ids {
 		parsed, err := shared.PGToUUID(id)
 		if err != nil {
+			s.logger.LogAttrs(ctx, slog.LevelError, "favorite uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("article_id", id))...)
 			return nil, err
 		}
 		out = append(out, parsed)
@@ -43,11 +59,13 @@ func (s *Service) CountsByArticleIDs(ctx context.Context, articleIDs []uuid.UUID
 	}
 	rows, err := s.repo.CountFavoritesByArticleIDs(ctx, toPGUUIDs(articleIDs))
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "favorite repo err", shared.ErrorAttrs(err, slog.Any("article_ids", articleIDs))...)
 		return nil, err
 	}
 	for _, row := range rows {
 		articleID, err := shared.PGToUUID(row.ArticleID)
 		if err != nil {
+			s.logger.LogAttrs(ctx, slog.LevelError, "favorite uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("article_id", row.ArticleID))...)
 			return nil, err
 		}
 		counts[articleID] = int(row.FavoritesCount)
@@ -65,11 +83,13 @@ func (s *Service) FavoritedArticleIDs(ctx context.Context, userID uuid.UUID, art
 		ArticleIds: toPGUUIDs(articleIDs),
 	})
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "favorite repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()), slog.Any("article_ids", articleIDs))...)
 		return nil, err
 	}
 	for _, id := range ids {
 		articleID, err := shared.PGToUUID(id)
 		if err != nil {
+			s.logger.LogAttrs(ctx, slog.LevelError, "favorite uuid err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()), shared.UUIDAttr("article_id", id))...)
 			return nil, err
 		}
 		result[articleID] = struct{}{}

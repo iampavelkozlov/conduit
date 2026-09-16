@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -25,15 +26,17 @@ type Service struct {
 	transactions transactions
 	tokenMgr     TokenManagerIface
 	passwordMgr  PasswordManagerIface
+	logger       *slog.Logger
 }
 
-func New(repo Repository, transactions transactions, cfg config.AuthConfig) *Service {
+func New(repo Repository, transactions transactions, cfg config.AuthConfig, loggers ...*slog.Logger) *Service {
 	return &Service{
 		userRepo:     repo,
 		sessionRepo:  repo,
 		transactions: transactions,
 		tokenMgr:     NewTokenManager(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
 		passwordMgr:  NewPasswordManager(cfg.PasswordPepper),
+		logger:       shared.ServiceLogger(loggers...),
 	}
 }
 
@@ -45,6 +48,7 @@ func NewWithDeps(
 	transactions transactions,
 	tokenMgr TokenManagerIface,
 	passwordMgr PasswordManagerIface,
+	loggers ...*slog.Logger,
 ) *Service {
 	return &Service{
 		userRepo:     userRepo,
@@ -52,6 +56,7 @@ func NewWithDeps(
 		transactions: transactions,
 		tokenMgr:     tokenMgr,
 		passwordMgr:  passwordMgr,
+		logger:       shared.ServiceLogger(loggers...),
 	}
 }
 
@@ -67,13 +72,15 @@ func (s *Service) CreateUser(ctx context.Context, req models.NewUserRequest) (*m
 	}
 	passwordHash, err := s.passwordMgr.Hash(req.User.Password)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth password err", shared.ErrorAttrs(err)...)
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
+	userID := shared.NewUUIDValue()
 	var response *models.UserResponse
 	err = s.transactions.WithTx(ctx, func(repo postgres.Querier) error {
 		user, createErr := repo.CreateUser(ctx, postgres.CreateUserParams{
-			ID:           shared.NewUUID(),
+			ID:           shared.UUIDToPG(userID),
 			Email:        req.User.Email,
 			Username:     req.User.Username,
 			PasswordHash: passwordHash,
@@ -85,6 +92,9 @@ func (s *Service) CreateUser(ctx context.Context, req models.NewUserRequest) (*m
 		return createErr
 	})
 	if err != nil {
+		if !shared.IsExpectedError(err) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
+		}
 		return nil, err
 	}
 	return response, nil
@@ -102,11 +112,13 @@ func (s *Service) Login(ctx context.Context, req models.LoginUserRequest) (*mode
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, invalidCredentials()
 		}
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err)...)
 		return nil, err
 	}
 
 	ok, err := s.passwordMgr.Verify(req.User.Password, user.PasswordHash)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth password err", shared.ErrorAttrs(err, shared.UUIDAttr("user_id", user.ID))...)
 		return nil, fmt.Errorf("verify password: %w", err)
 	}
 	if !ok {
@@ -146,11 +158,15 @@ func (s *Service) RefreshToken(ctx context.Context, accessToken, refreshToken st
 		RefreshToken: hashRefreshToken(refreshToken),
 	})
 	if err != nil {
+		if !shared.IsExpectedError(err) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()), slog.String("jwt_id", jwtID.String()))...)
+		}
 		return nil, fmt.Errorf("session not found: %w", err)
 	}
 
 	user, err := s.userRepo.GetUserByID(ctx, uuidToPGType(userID))
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()), slog.String("jwt_id", jwtID.String()), shared.UUIDAttr("session_id", session.ID))...)
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
@@ -162,19 +178,21 @@ func (s *Service) ValidateAccessToken(token string) (*TokenClaims, error) {
 }
 
 func (s *Service) issueTokensForUser(ctx context.Context, user *postgres.User, sessions SessionRepository) (*models.UserResponse, error) {
-	response, session, err := s.newTokenSession(user)
+	response, session, err := s.newTokenSession(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 	if err := sessions.CreateSession(ctx, session); err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err, shared.UUIDAttr("user_id", session.UserID), shared.UUIDAttr("session_id", session.ID), shared.UUIDAttr("jwt_id", session.JwtID))...)
 		return nil, fmt.Errorf("create session: %w", err)
 	}
 	return response, nil
 }
 
 func (s *Service) rotateTokensForUser(ctx context.Context, user *postgres.User, oldSessionID pgtype.UUID) (*models.UserResponse, error) {
-	response, session, err := s.newTokenSession(user)
+	response, session, err := s.newTokenSession(ctx, user)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err, shared.UUIDAttr("user_id", session.UserID), shared.UUIDAttr("old_session_id", oldSessionID), shared.UUIDAttr("new_session_id", session.ID), shared.UUIDAttr("jwt_id", session.JwtID))...)
 		return nil, err
 	}
 	rows, err := s.sessionRepo.RotateSession(ctx, postgres.RotateSessionParams{
@@ -194,19 +212,22 @@ func (s *Service) rotateTokensForUser(ctx context.Context, user *postgres.User, 
 	return response, nil
 }
 
-func (s *Service) newTokenSession(user *postgres.User) (*models.UserResponse, postgres.CreateSessionParams, error) {
+func (s *Service) newTokenSession(ctx context.Context, user *postgres.User) (*models.UserResponse, postgres.CreateSessionParams, error) {
 	userID, err := shared.PGToUUID(user.ID)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("user_id", user.ID))...)
 		return nil, postgres.CreateSessionParams{}, fmt.Errorf("parse user id: %w", err)
 	}
 
 	pair, err := s.tokenMgr.GeneratePair(userID.String())
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth token err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
 		return nil, postgres.CreateSessionParams{}, fmt.Errorf("generate jwt pair: %w", err)
 	}
 
 	jwtUUID, err := uuid.Parse(pair.AccessClaims.ID)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth uuid err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
 		return nil, postgres.CreateSessionParams{}, fmt.Errorf("parse jwt id: %w", err)
 	}
 

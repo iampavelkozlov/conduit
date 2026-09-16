@@ -3,12 +3,12 @@ import "time"
 // QuerierMetrics decorates every repository method with Prometheus metrics.
 type QuerierMetrics struct {
 	base    {{.Interface.Type}}
-	metrics *Metrics
+	metrics *Repository
 }
 
 // NewQuerierMetrics wraps a repository without exposing query text or arguments
 // as labels. The method name and result have bounded cardinality.
-func NewQuerierMetrics(base {{.Interface.Type}}, metrics *Metrics) {{.Interface.Type}} {
+func NewQuerierMetrics(base {{.Interface.Type}}, metrics *Repository) {{.Interface.Type}} {
 	return &QuerierMetrics{base: base, metrics: metrics}
 }
 

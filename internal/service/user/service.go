@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"conduit/internal/gen/postgres"
 	"conduit/internal/models"
@@ -18,10 +19,11 @@ type Service struct {
 	repo      repository
 	follows   FollowService
 	passwords PasswordManager
+	logger    *slog.Logger
 }
 
-func New(repo repository, follows FollowService, passwords PasswordManager) *Service {
-	return &Service{repo: repo, follows: follows, passwords: passwords}
+func New(repo repository, follows FollowService, passwords PasswordManager, loggers ...*slog.Logger) *Service {
+	return &Service{repo: repo, follows: follows, passwords: passwords, logger: shared.ServiceLogger(loggers...)}
 }
 
 func (s *Service) GetCurrentUser(ctx context.Context) (*models.UserResponse, error) {
@@ -31,6 +33,9 @@ func (s *Service) GetCurrentUser(ctx context.Context) (*models.UserResponse, err
 	}
 	u, err := s.repo.GetUserByID(ctx, shared.UUIDToPG(id))
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "user repo err", shared.ErrorAttrs(err, slog.String("user_id", id.String()))...)
+		}
 		return nil, mapNotFound(err)
 	}
 	response := toModelUser(&u)
@@ -58,6 +63,7 @@ func (s *Service) UpdateCurrentUser(ctx context.Context, req *models.UpdateUserR
 	if req.User.PasswordSet {
 		hash, err = s.passwords.Hash(*req.User.Password)
 		if err != nil {
+			s.logger.LogAttrs(ctx, slog.LevelError, "user password err", shared.ErrorAttrs(err, slog.String("user_id", id.String()))...)
 			return nil, fmt.Errorf("hash password: %w", err)
 		}
 	}
@@ -70,6 +76,9 @@ func (s *Service) UpdateCurrentUser(ctx context.Context, req *models.UpdateUserR
 		ID: shared.UUIDToPG(id),
 	})
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "user repo err", shared.ErrorAttrs(err, slog.String("user_id", id.String()))...)
+		}
 		return nil, mapNotFound(err)
 	}
 	response := toModelUser(&u)
@@ -77,45 +86,40 @@ func (s *Service) UpdateCurrentUser(ctx context.Context, req *models.UpdateUserR
 	return &models.UserResponse{User: response}, nil
 }
 func (s *Service) FollowUserByUsername(ctx context.Context, username string) (*models.ProfileResponse, error) {
-	viewer, err := shared.UserIDFromContext(ctx)
-	if err != nil {
-		return nil, shared.ErrUnauthorized
-	}
-	target, err := s.repo.GetUserByUsername(ctx, username)
-	if err != nil {
-		return nil, mapNotFound(err)
-	}
-	targetID, err := shared.PGToUUID(target.ID)
-	if err != nil {
-		return nil, err
-	}
-	if followErr := s.follows.Follow(ctx, viewer, targetID); followErr != nil {
-		return nil, followErr
-	}
-	profile, err := toProfile(&target, true)
-	if err != nil {
-		return nil, err
-	}
-	return &models.ProfileResponse{Profile: profile}, nil
+	return s.changeFollow(ctx, username, s.follows.Follow, true)
 }
 func (s *Service) UnfollowUserByUsername(ctx context.Context, username string) (*models.ProfileResponse, error) {
+	return s.changeFollow(ctx, username, s.follows.Unfollow, false)
+}
+
+func (s *Service) changeFollow(
+	ctx context.Context,
+	username string,
+	change func(context.Context, uuid.UUID, uuid.UUID) error,
+	following bool,
+) (*models.ProfileResponse, error) {
 	viewer, err := shared.UserIDFromContext(ctx)
 	if err != nil {
 		return nil, shared.ErrUnauthorized
 	}
 	target, err := s.repo.GetUserByUsername(ctx, username)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "user repo err", shared.ErrorAttrs(err, slog.String("viewer_id", viewer.String()))...)
+		}
 		return nil, mapNotFound(err)
 	}
 	targetID, err := shared.PGToUUID(target.ID)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "user uuid err", shared.ErrorAttrs(err, slog.String("viewer_id", viewer.String()), shared.UUIDAttr("target_id", target.ID))...)
 		return nil, err
 	}
-	if unfollowErr := s.follows.Unfollow(ctx, viewer, targetID); unfollowErr != nil {
-		return nil, unfollowErr
+	if changeErr := change(ctx, viewer, targetID); changeErr != nil {
+		return nil, changeErr
 	}
-	profile, err := toProfile(&target, false)
+	profile, err := toProfile(&target, following)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "user uuid err", shared.ErrorAttrs(err, slog.String("viewer_id", viewer.String()), shared.UUIDAttr("target_id", target.ID))...)
 		return nil, err
 	}
 	return &models.ProfileResponse{Profile: profile}, nil
@@ -123,6 +127,9 @@ func (s *Service) UnfollowUserByUsername(ctx context.Context, username string) (
 func (s *Service) GetProfileByUsername(ctx context.Context, username string) (*models.ProfileResponse, error) {
 	u, err := s.repo.GetUserByUsername(ctx, username)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "user repo err", shared.ErrorAttrs(err)...)
+		}
 		return nil, mapNotFound(err)
 	}
 	return s.profile(ctx, &u)
@@ -131,9 +138,16 @@ func (s *Service) GetProfileByUsername(ctx context.Context, username string) (*m
 func (s *Service) IDByUsername(ctx context.Context, username string) (uuid.UUID, error) {
 	id, err := s.repo.GetUserIDByUsername(ctx, username)
 	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			s.logger.LogAttrs(ctx, slog.LevelError, "user repo err", shared.ErrorAttrs(err)...)
+		}
 		return uuid.Nil, mapNotFound(err)
 	}
-	return shared.PGToUUID(id)
+	parsed, err := shared.PGToUUID(id)
+	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "user uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("user_id", id))...)
+	}
+	return parsed, err
 }
 
 func (s *Service) ProfilesByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]models.Profile, error) {
@@ -148,6 +162,7 @@ func (s *Service) ProfilesByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.
 	}
 	users, err := s.repo.ListProfilesByIDs(ctx, values)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "user repo err", shared.ErrorAttrs(err, slog.Any("user_ids", ids))...)
 		return nil, err
 	}
 	following := map[uuid.UUID]struct{}{}
@@ -160,6 +175,7 @@ func (s *Service) ProfilesByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.
 	for i := range users {
 		id, err := shared.PGToUUID(users[i].ID)
 		if err != nil {
+			s.logger.LogAttrs(ctx, slog.LevelError, "user uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("user_id", users[i].ID))...)
 			return nil, err
 		}
 		_, isFollowing := following[id]
@@ -173,6 +189,7 @@ func (s *Service) ProfilesByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.
 func (s *Service) profile(ctx context.Context, u *postgres.User) (*models.ProfileResponse, error) {
 	target, err := shared.PGToUUID(u.ID)
 	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "user uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("target_id", u.ID))...)
 		return nil, err
 	}
 	following := false

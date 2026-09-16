@@ -30,33 +30,33 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 	if err != nil {
 		return nil, nil, err
 	}
-	registry := providePrometheusRegistry()
-	metrics, err := provideRepositoryMetrics(registry)
+	v := providePrometheusRegistry()
+	repository, err := provideRepositoryMetrics(v)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	querier := provideQueries(pool, metrics)
-	v := provideQueryDecorator(metrics)
-	transactions := provideTransactions(pool, v)
-	followService := provideFollowService(querier)
-	userService := provideUserService(querier, followService, configConfig)
-	tagService := provideTagService(querier)
-	articletagService := provideArticleTagService(querier)
-	favoriteService := provideFavoriteService(querier)
-	articleService := provideArticleService(querier, transactions, userService, tagService, articletagService, favoriteService, followService)
-	authService := provideAuthService(querier, transactions, configConfig)
-	commentService := provideCommentService(querier, userService)
+	querier := provideQueries(pool, repository)
+	v2 := provideQueryDecorator(repository)
+	transactions := provideTransactions(pool, v2)
+	followService := provideFollowService(querier, logger)
+	userService := provideUserService(querier, followService, configConfig, logger)
+	tagService := provideTagService(querier, logger)
+	articletagService := provideArticleTagService(querier, logger)
+	favoriteService := provideFavoriteService(querier, logger)
+	articleService := provideArticleService(querier, transactions, userService, tagService, articletagService, favoriteService, followService, logger)
+	authService := provideAuthService(querier, transactions, configConfig, logger)
+	commentService := provideCommentService(querier, userService, logger)
 	serviceService := service.New(articleService, authService, commentService, tagService, userService)
 	authMiddleware := middleware.NewAuthMiddleware(serviceService)
-	httpMetrics, err := provideHTTPMetrics(registry)
+	metricsHTTP, err := provideHTTPMetrics(v)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
 	panicReporter := providePanicReporter(logger)
 	strictServerInterface := http.NewServer(serviceService)
-	handler, err := provideHTTPHandler(configConfig, logger, authMiddleware, httpMetrics, panicReporter, strictServerInterface, registry)
+	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, v)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
