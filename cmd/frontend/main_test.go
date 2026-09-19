@@ -64,6 +64,7 @@ http:
   max_form_bytes: 1024
 session:
   cookie_name: conduit_session
+  refresh_cookie_name: conduit_refresh
   secure: false
   ttl: 1m
 logger:

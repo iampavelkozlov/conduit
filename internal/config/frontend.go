@@ -34,9 +34,10 @@ type FrontendHTTPConfig struct {
 }
 
 type FrontendSessionConfig struct {
-	CookieName string        `yaml:"cookie_name" env:"FRONTEND_COOKIE_NAME"`
-	Secure     bool          `yaml:"secure" env:"FRONTEND_COOKIE_SECURE"`
-	TTL        time.Duration `yaml:"ttl" env:"FRONTEND_COOKIE_TTL"`
+	CookieName        string        `yaml:"cookie_name" env:"FRONTEND_COOKIE_NAME"`
+	RefreshCookieName string        `yaml:"refresh_cookie_name" env:"FRONTEND_REFRESH_COOKIE_NAME"`
+	Secure            bool          `yaml:"secure" env:"FRONTEND_COOKIE_SECURE"`
+	TTL               time.Duration `yaml:"ttl" env:"FRONTEND_COOKIE_TTL"`
 }
 
 type FrontendLoggerConfig struct {
@@ -80,6 +81,10 @@ func (c *FrontendConfig) Validate() error {
 		return errors.New("frontend max form bytes must be positive")
 	case strings.TrimSpace(c.Session.CookieName) == "":
 		return errors.New("frontend cookie name must not be empty")
+	case strings.TrimSpace(c.Session.RefreshCookieName) == "":
+		return errors.New("frontend refresh cookie name must not be empty")
+	case c.Session.RefreshCookieName == c.Session.CookieName:
+		return errors.New("frontend cookie names must differ")
 	case c.Session.TTL <= 0:
 		return errors.New("frontend cookie TTL must be positive")
 	default:

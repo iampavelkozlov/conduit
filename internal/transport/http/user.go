@@ -14,7 +14,10 @@ func (s Server) CreateUser(ctx context.Context, request api.CreateUserRequestObj
 	if err != nil {
 		return nil, err
 	}
-	return api.CreateUser201JSONResponse{UserResponseJSONResponse: userResponse(&resp.User)}, nil
+	return &createUserResponse{
+		CreateUser201JSONResponse: api.CreateUser201JSONResponse{UserResponseJSONResponse: userResponse(&resp.User)},
+		refreshToken:              resp.User.RefreshToken,
+	}, nil
 }
 
 func (s Server) FollowUserByUsername(ctx context.Context, request api.FollowUserByUsernameRequestObject) (api.FollowUserByUsernameResponseObject, error) {

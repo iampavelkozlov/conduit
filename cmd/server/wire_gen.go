@@ -56,7 +56,7 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 	}
 	panicReporter := providePanicReporter(logger)
 	strictServerInterface := http.NewServer(serviceService)
-	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, v)
+	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, serviceService, v)
 	if err != nil {
 		cleanup()
 		return nil, nil, err

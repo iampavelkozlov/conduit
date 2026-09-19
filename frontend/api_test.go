@@ -45,6 +45,10 @@ func TestGeneratedAPISuccess(t *testing.T) {
 	require.NoError(t, err)
 	_, err = client.register(ctx, "alice", "alice@example.test", "secret")
 	require.NoError(t, err)
+	session, err := client.refresh(ctx, "token", "refresh-token")
+	require.NoError(t, err)
+	require.Equal(t, "token", session.User.Token)
+	require.Equal(t, "refresh-token", session.RefreshToken)
 	_, err = client.currentUser(ctx, "token")
 	require.NoError(t, err)
 	_, err = client.updateUser(ctx, "token", api.UpdateUser{Bio: new("bio")})
@@ -86,6 +90,7 @@ func successAPIHandler(authorized *int) http.Handler {
 		"DELETE /profiles/bob/follow":       {body: profileJSON},
 		"POST /users/login":                 {body: userJSON},
 		"POST /users":                       {status: http.StatusCreated, body: userJSON},
+		"POST /internal/auth/refresh":       {body: userJSON},
 		"GET /user":                         {body: userJSON},
 		"PUT /user":                         {body: userJSON},
 		"GET /tags":                         {body: `{"tags":["go"]}`},
@@ -94,6 +99,9 @@ func successAPIHandler(authorized *int) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Header.Get("Authorization") == "Token token" {
 			*authorized++
+		}
+		if r.URL.Path == "/users/login" || r.URL.Path == "/users" || r.URL.Path == "/internal/auth/refresh" {
+			http.SetCookie(w, &http.Cookie{Name: refreshTokenCookieName, Value: "refresh-token"})
 		}
 		value, ok := responses[r.Method+" "+r.URL.Path]
 		if !ok {
@@ -144,6 +152,7 @@ func apiCalls(client *generatedAPI, ctx context.Context) []func() error {
 		func() error { _, err := client.profile(ctx, "alice", "token"); return err },
 		func() error { _, err := client.login(ctx, "email", "password"); return err },
 		func() error { _, err := client.register(ctx, "user", "email", "password"); return err },
+		func() error { _, err := client.refresh(ctx, "token", "refresh"); return err },
 		func() error { _, err := client.currentUser(ctx, "token"); return err },
 		func() error { _, err := client.updateUser(ctx, "token", api.UpdateUser{}); return err },
 		func() error { _, err := client.createArticle(ctx, "token", api.NewArticle{}); return err },

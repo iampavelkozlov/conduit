@@ -14,8 +14,9 @@ http:
 
 session:
   cookie_name: "conduit_session"
+  refresh_cookie_name: "conduit_refresh"
   secure: false
-  ttl: "15m"
+  ttl: "720h"
 
 logger:
   level: "info"   # debug|info|warn|error

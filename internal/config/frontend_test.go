@@ -22,7 +22,7 @@ func TestFrontendConfigValidate(t *testing.T) {
 			MaxHeaderBytes:    1024,
 			MaxFormBytes:      1024,
 		},
-		Session: FrontendSessionConfig{CookieName: "session", TTL: time.Minute},
+		Session: FrontendSessionConfig{CookieName: "session", RefreshCookieName: "refresh", TTL: time.Minute},
 	}
 	require.NoError(t, valid.Validate())
 
@@ -39,6 +39,8 @@ func TestFrontendConfigValidate(t *testing.T) {
 		"invalid max header bytes":    func(c *FrontendConfig) { c.HTTP.MaxHeaderBytes = 0 },
 		"invalid max form bytes":      func(c *FrontendConfig) { c.HTTP.MaxFormBytes = 0 },
 		"empty cookie name":           func(c *FrontendConfig) { c.Session.CookieName = "" },
+		"empty refresh cookie name":   func(c *FrontendConfig) { c.Session.RefreshCookieName = "" },
+		"duplicate cookie names":      func(c *FrontendConfig) { c.Session.RefreshCookieName = c.Session.CookieName },
 		"invalid cookie TTL":          func(c *FrontendConfig) { c.Session.TTL = 0 },
 	}
 	for name, mutate := range tests {
@@ -68,8 +70,9 @@ http:
   max_form_bytes: 1048576
 session:
   cookie_name: conduit_session
+  refresh_cookie_name: conduit_refresh
   secure: false
-  ttl: 15m
+  ttl: 720h
 logger:
   level: info
   format: text

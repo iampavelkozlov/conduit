@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	defaultPageSize = 10
-	maxPageSize     = 100
+	defaultPageSize        = 10
+	maxPageSize            = 100
+	refreshTokenCookieName = "conduit_refresh"
 )
 
 //go:embed components/*.html
@@ -30,10 +31,11 @@ var templateAssets embed.FS
 var stylesCSS []byte
 
 type Options struct {
-	CookieName   string
-	CookieSecure bool
-	CookieTTL    time.Duration
-	MaxFormBytes int64
+	CookieName        string
+	RefreshCookieName string
+	CookieSecure      bool
+	CookieTTL         time.Duration
+	MaxFormBytes      int64
 }
 
 type App struct {
@@ -81,7 +83,7 @@ func newApp(client conduitAPI, logger *slog.Logger, options Options) (*App, erro
 	if logger == nil {
 		logger = slog.Default()
 	}
-	if options.CookieName == "" || options.CookieTTL <= 0 || options.MaxFormBytes <= 0 {
+	if options.CookieName == "" || options.RefreshCookieName == "" || options.CookieTTL <= 0 || options.MaxFormBytes <= 0 {
 		return nil, errors.New("frontend options are invalid")
 	}
 	templates, err := parseTemplates(templateAssets)
@@ -123,40 +125,64 @@ func serveStyles(w http.ResponseWriter, _ *http.Request) {
 
 func (a *App) baseData(w http.ResponseWriter, r *http.Request, page, title string) (*pageData, bool) {
 	data := &pageData{Title: title, Page: page, CurrentURL: requestURI(r), Form: map[string]string{}}
-	token := a.sessionToken(r)
-	if token == "" {
+	token, user, err := a.authenticate(w, r)
+	if err != nil {
+		a.serverError(w, r, err)
+		return nil, false
+	}
+	if user == nil {
 		return data, true
 	}
-	user, err := a.api.currentUser(r.Context(), token)
-	if err == nil {
-		data.User = user
-		return data, true
-	}
-	if failureStatus(err) == http.StatusUnauthorized {
-		a.clearSession(w)
-		return data, true
-	}
-	a.serverError(w, r, err)
-	return nil, false
+	data.User = user
+	replaceRequestCookie(r, a.options.CookieName, token)
+	return data, true
 }
 
 func (a *App) requireUser(w http.ResponseWriter, r *http.Request) (string, *api.User, bool) {
-	token := a.sessionToken(r)
-	if token == "" {
-		a.redirectLogin(w)
-		return "", nil, false
-	}
-	user, err := a.api.currentUser(r.Context(), token)
+	token, user, err := a.authenticate(w, r)
 	if err != nil {
-		if failureStatus(err) == http.StatusUnauthorized {
-			a.clearSession(w)
-			a.redirectLogin(w)
-			return "", nil, false
-		}
 		a.serverError(w, r, err)
 		return "", nil, false
 	}
+	if user == nil {
+		a.redirectLogin(w)
+		return "", nil, false
+	}
 	return token, user, true
+}
+
+func (a *App) authenticate(w http.ResponseWriter, r *http.Request) (string, *api.User, error) {
+	accessToken := a.sessionToken(r)
+	refreshToken := a.refreshToken(r)
+	if accessToken == "" && refreshToken == "" {
+		return "", nil, nil
+	}
+	if accessToken != "" {
+		user, err := a.api.currentUser(r.Context(), accessToken)
+		if err == nil {
+			return accessToken, user, nil
+		}
+		if failureStatus(err) != http.StatusUnauthorized {
+			return "", nil, err
+		}
+	}
+	if accessToken == "" || refreshToken == "" {
+		a.clearSession(w)
+		return "", nil, nil
+	}
+
+	session, err := a.api.refresh(r.Context(), accessToken, refreshToken)
+	if err != nil {
+		if failureStatus(err) == http.StatusUnauthorized {
+			a.clearSession(w)
+			return "", nil, nil
+		}
+		return "", nil, err
+	}
+	a.setSession(w, session)
+	replaceRequestCookie(r, a.options.CookieName, session.User.Token)
+	replaceRequestCookie(r, a.options.RefreshCookieName, session.RefreshToken)
+	return session.User.Token, session.User, nil
 }
 
 func (a *App) parseForm(w http.ResponseWriter, r *http.Request) bool {
@@ -168,9 +194,14 @@ func (a *App) parseForm(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (a *App) setSession(w http.ResponseWriter, token string) {
+func (a *App) setSession(w http.ResponseWriter, session *authSession) {
+	a.setCookie(w, a.options.CookieName, session.User.Token)
+	a.setCookie(w, a.options.RefreshCookieName, session.RefreshToken)
+}
+
+func (a *App) setCookie(w http.ResponseWriter, name, value string) {
 	cookie := &http.Cookie{
-		Name: a.options.CookieName, Value: token, Path: "/", HttpOnly: true, Secure: true,
+		Name: name, Value: value, Path: "/", HttpOnly: true, Secure: true,
 		SameSite: http.SameSiteLaxMode, MaxAge: int(a.options.CookieTTL.Seconds()), Expires: time.Now().Add(a.options.CookieTTL),
 	}
 	cookie.Secure = a.options.CookieSecure
@@ -178,12 +209,14 @@ func (a *App) setSession(w http.ResponseWriter, token string) {
 }
 
 func (a *App) clearSession(w http.ResponseWriter) {
-	cookie := &http.Cookie{
-		Name: a.options.CookieName, Path: "/", HttpOnly: true, Secure: true,
-		SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(1, 0),
+	for _, name := range []string{a.options.CookieName, a.options.RefreshCookieName} {
+		cookie := &http.Cookie{
+			Name: name, Path: "/", HttpOnly: true, Secure: true,
+			SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(1, 0),
+		}
+		cookie.Secure = a.options.CookieSecure
+		http.SetCookie(w, cookie)
 	}
-	cookie.Secure = a.options.CookieSecure
-	http.SetCookie(w, cookie)
 }
 
 func (a *App) sessionToken(r *http.Request) string {
@@ -192,6 +225,30 @@ func (a *App) sessionToken(r *http.Request) string {
 		return ""
 	}
 	return cookie.Value
+}
+
+func (a *App) refreshToken(r *http.Request) string {
+	cookie, err := r.Cookie(a.options.RefreshCookieName)
+	if err != nil {
+		return ""
+	}
+	return cookie.Value
+}
+
+func replaceRequestCookie(r *http.Request, name, value string) {
+	cookies := r.Cookies()
+	r.Header.Del("Cookie")
+	replaced := false
+	for _, cookie := range cookies {
+		if cookie.Name == name {
+			cookie.Value = value
+			replaced = true
+		}
+		r.AddCookie(cookie)
+	}
+	if !replaced {
+		r.AddCookie(&http.Cookie{Name: name, Value: value, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
+	}
 }
 
 func (a *App) render(w http.ResponseWriter, r *http.Request, name string, data *pageData) {

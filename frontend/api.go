@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	api "conduit/internal/gen/http"
 )
@@ -28,6 +30,11 @@ type articleQuery struct {
 	Limit     int
 }
 
+type authSession struct {
+	User         *api.User
+	RefreshToken string
+}
+
 type conduitAPI interface {
 	articles(context.Context, articleQuery, string) (*api.MultipleArticlesResponse, error)
 	feed(context.Context, int, int, string) (*api.MultipleArticlesResponse, error)
@@ -35,8 +42,9 @@ type conduitAPI interface {
 	article(context.Context, string, string) (*api.Article, error)
 	comments(context.Context, string, string) ([]api.Comment, error)
 	profile(context.Context, string, string) (*api.Profile, error)
-	login(context.Context, string, string) (*api.User, error)
-	register(context.Context, string, string, string) (*api.User, error)
+	login(context.Context, string, string) (*authSession, error)
+	register(context.Context, string, string, string) (*authSession, error)
+	refresh(context.Context, string, string) (*authSession, error)
 	currentUser(context.Context, string) (*api.User, error)
 	updateUser(context.Context, string, api.UpdateUser) (*api.User, error)
 	createArticle(context.Context, string, api.NewArticle) (*api.Article, error)
@@ -49,7 +57,9 @@ type conduitAPI interface {
 }
 
 type generatedAPI struct {
-	client api.ClientWithResponsesInterface
+	client         api.ClientWithResponsesInterface
+	httpClient     *http.Client
+	refreshRequest *http.Request
 }
 
 func newGeneratedAPI(baseURL string, httpClient *http.Client) (*generatedAPI, error) {
@@ -57,11 +67,20 @@ func newGeneratedAPI(baseURL string, httpClient *http.Client) (*generatedAPI, er
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
 		return nil, fmt.Errorf("invalid API base URL %q", baseURL)
 	}
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	client, err := api.NewClientWithResponses(baseURL, api.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("create OpenAPI client: %w", err)
 	}
-	return &generatedAPI{client: client}, nil
+	refreshURL := &url.URL{
+		Scheme: parsedURL.Scheme,
+		Host:   parsedURL.Host,
+		Path:   strings.TrimSuffix(strings.TrimSuffix(parsedURL.Path, "/"), "/api") + "/internal/auth/refresh",
+	}
+	refreshRequest := &http.Request{Method: http.MethodPost, URL: refreshURL, Header: make(http.Header)}
+	return &generatedAPI{client: client, httpClient: httpClient, refreshRequest: refreshRequest}, nil
 }
 
 func (c *generatedAPI) articles(ctx context.Context, query articleQuery, token string) (*api.MultipleArticlesResponse, error) {
@@ -131,7 +150,7 @@ func (c *generatedAPI) profile(ctx context.Context, username, token string) (*ap
 	return &response.JSON200.Profile, nil
 }
 
-func (c *generatedAPI) login(ctx context.Context, email, password string) (*api.User, error) {
+func (c *generatedAPI) login(ctx context.Context, email, password string) (*authSession, error) {
 	response, err := c.client.LoginWithResponse(ctx, api.LoginJSONRequestBody{User: api.LoginUser{Email: email, Password: password}})
 	if err != nil {
 		return nil, fmt.Errorf("login: %w", err)
@@ -139,10 +158,10 @@ func (c *generatedAPI) login(ctx context.Context, email, password string) (*api.
 	if response.JSON200 == nil {
 		return nil, responseFailure("login", response.HTTPResponse, response.Body)
 	}
-	return &response.JSON200.User, nil
+	return sessionFromResponse(&response.JSON200.User, response.HTTPResponse)
 }
 
-func (c *generatedAPI) register(ctx context.Context, username, email, password string) (*api.User, error) {
+func (c *generatedAPI) register(ctx context.Context, username, email, password string) (*authSession, error) {
 	response, err := c.client.CreateUserWithResponse(ctx, api.CreateUserJSONRequestBody{User: api.NewUser{Username: username, Email: email, Password: password}})
 	if err != nil {
 		return nil, fmt.Errorf("register: %w", err)
@@ -150,7 +169,52 @@ func (c *generatedAPI) register(ctx context.Context, username, email, password s
 	if response.JSON201 == nil {
 		return nil, responseFailure("register", response.HTTPResponse, response.Body)
 	}
-	return &response.JSON201.User, nil
+	return sessionFromResponse(&response.JSON201.User, response.HTTPResponse)
+}
+
+func (c *generatedAPI) refresh(ctx context.Context, accessToken, refreshToken string) (*authSession, error) {
+	if c.httpClient.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.httpClient.Timeout)
+		defer cancel()
+	}
+	request := c.refreshRequest.Clone(ctx)
+	request.Header.Set("Authorization", "Token "+accessToken)
+	request.AddCookie(&http.Cookie{
+		Name: refreshTokenCookieName, Value: refreshToken, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode,
+	})
+	transport := c.httpClient.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	response, err := transport.RoundTrip(request)
+	if err != nil {
+		return nil, fmt.Errorf("refresh session: %w", err)
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read refresh response: %w", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, responseFailure("refresh session", response, body)
+	}
+	var payload api.UserResponse
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("decode refresh response: %w", err)
+	}
+	return sessionFromResponse(&payload.User, response)
+}
+
+func sessionFromResponse(user *api.User, response *http.Response) (*authSession, error) {
+	if response != nil {
+		for _, cookie := range response.Cookies() {
+			if cookie.Name == refreshTokenCookieName && cookie.Value != "" {
+				return &authSession{User: user, RefreshToken: cookie.Value}, nil
+			}
+		}
+	}
+	return nil, errors.New("authentication response has no refresh token")
 }
 
 func (c *generatedAPI) currentUser(ctx context.Context, token string) (*api.User, error) {

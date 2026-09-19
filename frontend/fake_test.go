@@ -75,18 +75,27 @@ func (f *fakeAPI) profile(_ context.Context, username, _ string) (*api.Profile, 
 	return &value, nil
 }
 
-func (f *fakeAPI) login(context.Context, string, string) (*api.User, error) {
+func (f *fakeAPI) login(context.Context, string, string) (*authSession, error) {
 	if err := f.call("login"); err != nil {
 		return nil, err
 	}
-	return &f.user, nil
+	return &authSession{User: &f.user, RefreshToken: "refresh-token"}, nil
 }
 
-func (f *fakeAPI) register(context.Context, string, string, string) (*api.User, error) {
+func (f *fakeAPI) register(context.Context, string, string, string) (*authSession, error) {
 	if err := f.call("register"); err != nil {
 		return nil, err
 	}
-	return &f.user, nil
+	return &authSession{User: &f.user, RefreshToken: "refresh-token"}, nil
+}
+
+func (f *fakeAPI) refresh(context.Context, string, string) (*authSession, error) {
+	if err := f.call("refresh"); err != nil {
+		return nil, err
+	}
+	user := f.user
+	user.Token = "refreshed-token"
+	return &authSession{User: &user, RefreshToken: "rotated-refresh-token"}, nil
 }
 
 func (f *fakeAPI) currentUser(context.Context, string) (*api.User, error) {
@@ -158,6 +167,7 @@ func request(t *testing.T, app *App, method, target string, form url.Values, aut
 	}
 	if authenticated {
 		req.AddCookie(&http.Cookie{Name: testOptions().CookieName, Value: "token"})
+		req.AddCookie(&http.Cookie{Name: testOptions().RefreshCookieName, Value: "refresh-token"})
 	}
 	response := httptest.NewRecorder()
 	app.Handler().ServeHTTP(response, req)
@@ -165,7 +175,7 @@ func request(t *testing.T, app *App, method, target string, form url.Values, aut
 }
 
 func testOptions() Options {
-	return Options{CookieName: "conduit_session", CookieTTL: time.Minute, MaxFormBytes: 1 << 20}
+	return Options{CookieName: "conduit_session", RefreshCookieName: "conduit_refresh", CookieTTL: time.Minute, MaxFormBytes: 1 << 20}
 }
 
 func articleList(ctx context.Context) *api.MultipleArticlesResponse {

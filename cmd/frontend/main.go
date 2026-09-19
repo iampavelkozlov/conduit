@@ -44,7 +44,7 @@ func run(ctx context.Context, args []string) error {
 		return fmt.Errorf("initialize frontend logger: %w", err)
 	}
 	app, err := frontend.New(cfg.API.URL, &http.Client{Timeout: cfg.API.Timeout}, appLogger, frontend.Options{
-		CookieName: cfg.Session.CookieName, CookieSecure: cfg.Session.Secure,
+		CookieName: cfg.Session.CookieName, RefreshCookieName: cfg.Session.RefreshCookieName, CookieSecure: cfg.Session.Secure,
 		CookieTTL: cfg.Session.TTL, MaxFormBytes: cfg.HTTP.MaxFormBytes,
 	})
 	if err != nil {

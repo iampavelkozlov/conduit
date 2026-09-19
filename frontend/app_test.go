@@ -195,8 +195,23 @@ func TestHandlerErrors(t *testing.T) {
 		client := newFakeAPI()
 		client.errors["currentUser"] = &apiFailure{Status: http.StatusUnauthorized}
 		response := request(t, newTestApp(t, client), http.MethodGet, "/settings", nil, true)
+		require.Equal(t, http.StatusOK, response.Code)
+		require.Equal(t, 1, client.calls["refresh"])
+		cookies := response.Result().Cookies()
+		require.Len(t, cookies, 2)
+		require.Equal(t, "refreshed-token", cookies[0].Value)
+		require.Equal(t, "rotated-refresh-token", cookies[1].Value)
+	})
+	t.Run("expired refresh session", func(t *testing.T) {
+		client := newFakeAPI()
+		client.errors["currentUser"] = &apiFailure{Status: http.StatusUnauthorized}
+		client.errors["refresh"] = &apiFailure{Status: http.StatusUnauthorized}
+		response := request(t, newTestApp(t, client), http.MethodGet, "/settings", nil, true)
 		require.Equal(t, http.StatusSeeOther, response.Code)
-		require.Equal(t, -1, response.Result().Cookies()[0].MaxAge)
+		cookies := response.Result().Cookies()
+		require.Len(t, cookies, 2)
+		require.Equal(t, -1, cookies[0].MaxAge)
+		require.Equal(t, -1, cookies[1].MaxAge)
 	})
 	t.Run("missing article", func(t *testing.T) {
 		client := newFakeAPI()
@@ -240,7 +255,7 @@ func TestHandlerErrors(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, response.Code)
 	})
 	t.Run("oversized form", func(t *testing.T) {
-		app, err := newApp(newFakeAPI(), nil, Options{CookieName: "session", CookieTTL: testOptions().CookieTTL, MaxFormBytes: 1})
+		app, err := newApp(newFakeAPI(), nil, Options{CookieName: "session", RefreshCookieName: "refresh", CookieTTL: testOptions().CookieTTL, MaxFormBytes: 1})
 		require.NoError(t, err)
 		response := request(t, app, http.MethodPost, "/login", url.Values{"email": {"too-large"}}, false)
 		require.Equal(t, http.StatusBadRequest, response.Code)

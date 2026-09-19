@@ -17,6 +17,7 @@ type applicationService interface {
 	CreateArticleFavorite(context.Context, string) (*models.SingleArticleResponse, error)
 	DeleteArticleFavorite(context.Context, string) (*models.SingleArticleResponse, error)
 	Login(context.Context, models.LoginUserRequest) (*models.UserResponse, error)
+	RefreshToken(context.Context, string, string) (*models.UserResponse, error)
 	FollowUserByUsername(context.Context, string) (*models.ProfileResponse, error)
 	UnfollowUserByUsername(context.Context, string) (*models.ProfileResponse, error)
 	GetProfileByUsername(context.Context, string) (*models.ProfileResponse, error)

@@ -89,6 +89,7 @@ func TestProvideHTTPHandler(t *testing.T) {
 		httpMetrics,
 		providePanicReporter(slog.New(slog.DiscardHandler)),
 		httptransport.NewServer(facade),
+		facade,
 		registry,
 	)
 	require.NoError(t, err)

@@ -14,12 +14,12 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	form := map[string]string{"email": r.FormValue("email")}
-	user, err := a.api.login(r.Context(), form["email"], r.FormValue("password"))
+	session, err := a.api.login(r.Context(), form["email"], r.FormValue("password"))
 	if err != nil {
 		a.render(w, r, "login", &pageData{Title: "Sign in — Conduit", Page: "login", Errors: formErrors(err), Form: form})
 		return
 	}
-	a.setSession(w, user.Token)
+	a.setSession(w, session)
 	redirect(w, "/")
 }
 
@@ -28,12 +28,12 @@ func (a *App) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	form := map[string]string{"username": r.FormValue("username"), "email": r.FormValue("email")}
-	user, err := a.api.register(r.Context(), form["username"], form["email"], r.FormValue("password"))
+	session, err := a.api.register(r.Context(), form["username"], form["email"], r.FormValue("password"))
 	if err != nil {
 		a.render(w, r, "register", &pageData{Title: "Sign up — Conduit", Page: "register", Errors: formErrors(err), Form: form})
 		return
 	}
-	a.setSession(w, user.Token)
+	a.setSession(w, session)
 	redirect(w, "/")
 }
 
@@ -64,7 +64,7 @@ func (a *App) settings(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, "settings", &pageData{Title: "Your Settings — Conduit", Page: "settings", User: user, Errors: formErrors(err), Form: form})
 		return
 	}
-	a.setSession(w, updated.Token)
+	a.setCookie(w, a.options.CookieName, updated.Token)
 	redirect(w, "/profile/"+url.PathEscape(updated.Username))
 }
 

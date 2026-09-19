@@ -8,6 +8,7 @@ import (
 	"conduit/internal/config"
 	api "conduit/internal/gen/http"
 	"conduit/internal/metrics"
+	"conduit/internal/service"
 	httptransport "conduit/internal/transport/http"
 	transportmiddleware "conduit/internal/transport/middleware"
 
@@ -27,6 +28,7 @@ func provideHTTPHandler(
 	httpMetrics *metrics.HTTP,
 	panicReporter metrics.PanicReporter,
 	server api.StrictServerInterface,
+	svc *service.Service,
 	registry *metrics.Registry,
 ) (http.Handler, error) {
 	spec, err := api.GetSwagger()
@@ -46,6 +48,7 @@ func provideHTTPHandler(
 	router.Use(httpMetrics.Handler)
 	router.Use(httpMetrics.Recoverer(panicReporter))
 	router.Handle("/metrics", metrics.ScrapeHandler(registry))
+	router.Method(http.MethodPost, "/internal/auth/refresh", httptransport.NewRefreshHandler(svc))
 	router.Group(func(apiRouter chi.Router) {
 		apiRouter.Use(chimiddleware.RequestSize(maxRequestBodySize))
 		apiRouter.Use(transportmiddleware.JSONHeaders)
