@@ -12,6 +12,9 @@ import (
 
 type Querier interface {
 	AttachTagsToArticle(ctx context.Context, arg AttachTagsToArticleParams) error
+	ClaimInboxEvent(ctx context.Context, arg ClaimInboxEventParams) (bool, error)
+	ClaimOutboxEvents(ctx context.Context, arg ClaimOutboxEventsParams) ([]ClaimOutboxEventsRow, error)
+	CompleteInboxEvent(ctx context.Context, arg CompleteInboxEventParams) (int64, error)
 	CountArticles(ctx context.Context, arg CountArticlesParams) (int64, error)
 	CountFavoritesByArticleIDs(ctx context.Context, articleIds []pgtype.UUID) ([]CountFavoritesByArticleIDsRow, error)
 	CreateArticle(ctx context.Context, arg CreateArticleParams) (pgtype.UUID, error)
@@ -21,6 +24,7 @@ type Querier interface {
 	DeleteArticleBySlugAndAuthorID(ctx context.Context, arg DeleteArticleBySlugAndAuthorIDParams) (int64, error)
 	DeleteArticleTags(ctx context.Context, articleID pgtype.UUID) error
 	DeleteCommentByIDAndArticleIDAndAuthorID(ctx context.Context, arg DeleteCommentByIDAndArticleIDAndAuthorIDParams) (int64, error)
+	DeleteUser(ctx context.Context, id pgtype.UUID) (int64, error)
 	FavoriteArticle(ctx context.Context, arg FavoriteArticleParams) error
 	FollowUser(ctx context.Context, arg FollowUserParams) error
 	GetArticleBySlug(ctx context.Context, slug string) (Article, error)
@@ -44,6 +48,9 @@ type Querier interface {
 	ListProfilesByIDs(ctx context.Context, ids []pgtype.UUID) ([]ListProfilesByIDsRow, error)
 	ListTags(ctx context.Context) ([]string, error)
 	ListTagsByIDs(ctx context.Context, ids []pgtype.UUID) ([]ListTagsByIDsRow, error)
+	MarkOutboxPublished(ctx context.Context, id pgtype.UUID) (int64, error)
+	ReleaseInboxEvent(ctx context.Context, arg ReleaseInboxEventParams) (int64, error)
+	ReleaseOutboxEvent(ctx context.Context, arg ReleaseOutboxEventParams) (int64, error)
 	RotateSession(ctx context.Context, arg RotateSessionParams) (int64, error)
 	UnfavoriteArticle(ctx context.Context, arg UnfavoriteArticleParams) error
 	UnfollowUser(ctx context.Context, arg UnfollowUserParams) error

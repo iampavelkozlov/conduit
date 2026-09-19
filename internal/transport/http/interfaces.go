@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"conduit/internal/models"
+	"conduit/internal/service/auth"
 )
 
 //go:generate go run go.uber.org/mock/mockgen -source=interfaces.go -destination=mock_http.go -package=http
@@ -28,4 +29,9 @@ type applicationService interface {
 	GetCurrentUser(context.Context) (*models.UserResponse, error)
 	UpdateCurrentUser(context.Context, *models.UpdateUserRequest) (*models.UserResponse, error)
 	GetTags(context.Context) (*models.TagsResponse, error)
+	ValidateAccessToken(string) (*auth.TokenClaims, error)
 }
+
+// ApplicationService is the HTTP-facing application boundary. Both the local
+// application service and the remote gRPC gateway implement this contract.
+type ApplicationService = applicationService

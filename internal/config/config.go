@@ -18,12 +18,34 @@ type Config struct {
 }
 
 type RemoteServicesConfig struct {
-	Subscriptions GRPCClientConfig `yaml:"subscriptions"`
+	Mode          string                        `yaml:"mode" env:"SERVICES_MODE" env-default:"local"`
+	Timeout       time.Duration                 `yaml:"timeout" env:"SERVICES_GRPC_TIMEOUT" env-default:"3s"`
+	Auth          AuthGRPCClientConfig          `yaml:"auth"`
+	Profile       ProfileGRPCClientConfig       `yaml:"profile"`
+	Posts         PostsGRPCClientConfig         `yaml:"posts"`
+	Comments      CommentsGRPCClientConfig      `yaml:"comments"`
+	Subscriptions SubscriptionsGRPCClientConfig `yaml:"subscriptions"`
 }
 
-type GRPCClientConfig struct {
+type AuthGRPCClientConfig struct {
+	Target string `yaml:"target" env:"AUTH_GRPC_TARGET"`
+}
+type ProfileGRPCClientConfig struct {
+	Target string `yaml:"target" env:"PROFILE_GRPC_TARGET"`
+}
+type PostsGRPCClientConfig struct {
+	Target string `yaml:"target" env:"POSTS_GRPC_TARGET"`
+}
+type CommentsGRPCClientConfig struct {
+	Target string `yaml:"target" env:"COMMENTS_GRPC_TARGET"`
+}
+type SubscriptionsGRPCClientConfig struct {
 	Target string `yaml:"target" env:"SUBSCRIPTIONS_GRPC_TARGET"`
 }
+
+// GRPCClientConfig is kept as a source-compatible alias for staged
+// subscriptions configuration constructed by existing tests and callers.
+type GRPCClientConfig = SubscriptionsGRPCClientConfig
 
 type DBConfig struct {
 	DSN string `yaml:"dsn" env:"DB_DSN"`
@@ -73,6 +95,12 @@ func (c *Config) Validate() error {
 		return errors.New("refresh token TTL must exceed access token TTL")
 	case len(c.HTTP.AllowedOrigins) == 0:
 		return errors.New("at least one allowed HTTP origin is required")
+	case c.Services.Mode != "local" && c.Services.Mode != "grpc":
+		return errors.New("services mode must be local or grpc")
+	case c.Services.Timeout <= 0:
+		return errors.New("services gRPC timeout must be positive")
+	case c.Services.Mode == "grpc" && (c.Services.Auth.Target == "" || c.Services.Profile.Target == "" || c.Services.Posts.Target == "" || c.Services.Comments.Target == "" || c.Services.Subscriptions.Target == ""):
+		return errors.New("all gRPC service targets are required in grpc mode")
 	default:
 		return nil
 	}

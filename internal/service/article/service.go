@@ -142,21 +142,24 @@ func (s *Service) DeleteArticleFavorite(ctx context.Context, slug string) (*mode
 	return s.changeFavorite(ctx, slug, s.favorites.Remove)
 }
 
+func (s *Service) ResolveArticleID(ctx context.Context, slug string) (uuid.UUID, error) {
+	articleID, err := s.repo.GetArticleIDBySlug(ctx, slug)
+	if err != nil {
+		return uuid.Nil, mapArticleNotFound(err)
+	}
+	return shared.PGToUUID(articleID)
+}
+
 func (s *Service) changeFavorite(ctx context.Context, slug string, change func(context.Context, uuid.UUID, uuid.UUID) error) (*models.SingleArticleResponse, error) {
 	userID, err := shared.UserIDFromContext(ctx)
 	if err != nil {
 		return nil, shared.ErrUnauthorized
 	}
-	articleID, err := s.repo.GetArticleIDBySlug(ctx, slug)
+	parsedArticleID, err := s.ResolveArticleID(ctx, slug)
 	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
+		if !shared.IsExpectedError(err) {
 			s.logger.LogAttrs(ctx, slog.LevelError, "article repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
 		}
-		return nil, mapArticleNotFound(err)
-	}
-	parsedArticleID, err := shared.PGToUUID(articleID)
-	if err != nil {
-		s.logger.LogAttrs(ctx, slog.LevelError, "article uuid err", shared.ErrorAttrs(err, shared.UUIDAttr("article_id", articleID), slog.String("user_id", userID.String()))...)
 		return nil, err
 	}
 	if err := change(ctx, parsedArticleID, userID); err != nil {
@@ -339,7 +342,7 @@ func (s *Service) enrich(ctx context.Context, rows []postgres.Article) ([]models
 		articles[i] = models.Article{
 			Author: profile, Body: row.Body, CreatedAt: row.CreatedAt.Time,
 			Description: row.Description, Favorited: isFavorited, FavoritesCount: favoriteCounts[articleID],
-			Slug: row.Slug, TagList: tagNames, Title: row.Title, UpdatedAt: row.UpdatedAt.Time,
+			ID: articleID, Slug: row.Slug, TagList: tagNames, Title: row.Title, UpdatedAt: row.UpdatedAt.Time,
 		}
 	}
 	return articles, nil

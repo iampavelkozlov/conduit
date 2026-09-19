@@ -96,6 +96,7 @@ func TestGetArticlesUsesBatchEnrichment(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Len(t, response.Articles, tt.wantLen)
+			require.Equal(t, articleID, response.Articles[0].ID)
 			require.Equal(t, []string{"go"}, response.Articles[0].TagList)
 			require.Equal(t, 2, response.Articles[0].FavoritesCount)
 		})

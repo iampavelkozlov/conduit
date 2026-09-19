@@ -13,6 +13,7 @@ GOOSE_VERSION := v3.28.0
 GOOSE := $(shell go env GOPATH)/bin/goose
 SQLC_VERSION := v1.30.0
 SQLC := $(shell go env GOPATH)/bin/sqlc
+SQLC_CONFIGS := sqlc.yaml $(shell find services -name sqlc.yaml -type f | sort)
 BUF_VERSION := v1.72.0
 BUF := $(shell go env GOPATH)/bin/buf
 PROTOC_GEN_GO_VERSION := v1.36.11
@@ -52,7 +53,10 @@ sqlc-install:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION)
 
 sqlc: sqlc-install
-	$(SQLC) generate
+	@for config in $(SQLC_CONFIGS); do \
+		echo "Generating sqlc sources from $$config"; \
+		$(SQLC) generate -f "$$config" || exit 1; \
+	done
 
 grpc-tools:
 	go install github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)

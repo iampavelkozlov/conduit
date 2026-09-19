@@ -57,6 +57,21 @@ func (mr *MockUserRepositoryMockRecorder) CreateUser(ctx, arg any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUserRepository)(nil).CreateUser), ctx, arg)
 }
 
+// DeleteUser mocks base method.
+func (m *MockUserRepository) DeleteUser(arg0 context.Context, arg1 pgtype.UUID) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUser", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteUser indicates an expected call of DeleteUser.
+func (mr *MockUserRepositoryMockRecorder) DeleteUser(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockUserRepository)(nil).DeleteUser), arg0, arg1)
+}
+
 // GetUserByEmail mocks base method.
 func (m *MockUserRepository) GetUserByEmail(ctx context.Context, email string) (postgres.User, error) {
 	m.ctrl.T.Helper()
@@ -85,6 +100,21 @@ func (m *MockUserRepository) GetUserByID(ctx context.Context, id pgtype.UUID) (p
 func (mr *MockUserRepositoryMockRecorder) GetUserByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByID", reflect.TypeOf((*MockUserRepository)(nil).GetUserByID), ctx, id)
+}
+
+// UpdateUser mocks base method.
+func (m *MockUserRepository) UpdateUser(ctx context.Context, arg postgres.UpdateUserParams) (postgres.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUser", ctx, arg)
+	ret0, _ := ret[0].(postgres.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUser indicates an expected call of UpdateUser.
+func (mr *MockUserRepositoryMockRecorder) UpdateUser(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockUserRepository)(nil).UpdateUser), ctx, arg)
 }
 
 // MockSessionRepository is a mock of SessionRepository interface.
@@ -208,6 +238,21 @@ func (mr *MockRepositoryMockRecorder) CreateUser(ctx, arg any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockRepository)(nil).CreateUser), ctx, arg)
 }
 
+// DeleteUser mocks base method.
+func (m *MockRepository) DeleteUser(arg0 context.Context, arg1 pgtype.UUID) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUser", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteUser indicates an expected call of DeleteUser.
+func (mr *MockRepositoryMockRecorder) DeleteUser(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockRepository)(nil).DeleteUser), arg0, arg1)
+}
+
 // GetSessionByUserIDAndJWTIDAndRefreshToken mocks base method.
 func (m *MockRepository) GetSessionByUserIDAndJWTIDAndRefreshToken(ctx context.Context, arg postgres.GetSessionByUserIDAndJWTIDAndRefreshTokenParams) (postgres.Session, error) {
 	m.ctrl.T.Helper()
@@ -266,6 +311,21 @@ func (m *MockRepository) RotateSession(ctx context.Context, arg postgres.RotateS
 func (mr *MockRepositoryMockRecorder) RotateSession(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RotateSession", reflect.TypeOf((*MockRepository)(nil).RotateSession), ctx, arg)
+}
+
+// UpdateUser mocks base method.
+func (m *MockRepository) UpdateUser(ctx context.Context, arg postgres.UpdateUserParams) (postgres.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUser", ctx, arg)
+	ret0, _ := ret[0].(postgres.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUser indicates an expected call of UpdateUser.
+func (mr *MockRepositoryMockRecorder) UpdateUser(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockRepository)(nil).UpdateUser), ctx, arg)
 }
 
 // Mocktransactions is a mock of transactions interface.

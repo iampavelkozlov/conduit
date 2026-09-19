@@ -2,6 +2,7 @@ package comment
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -20,10 +21,37 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+type articleResolverFunc func(context.Context, string) (uuid.UUID, error)
+
+func (f articleResolverFunc) ResolveArticleID(ctx context.Context, slug string) (uuid.UUID, error) {
+	return f(ctx, slug)
+}
+
+func TestServiceUsesArticleResolver(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repo := NewMockrepository(ctrl)
+	profiles := NewMockProfileReader(ctrl)
+	articleID, authorID := uuid.New(), uuid.New()
+	resolved := false
+	resolver := articleResolverFunc(func(_ context.Context, slug string) (uuid.UUID, error) {
+		require.Equal(t, "article-slug", slug)
+		resolved = true
+		return articleID, nil
+	})
+	repo.EXPECT().CreateComment(gomock.Any(), gomock.Any()).Return(commentRow(authorID), nil)
+	profiles.EXPECT().ProfilesByIDs(gomock.Any(), []uuid.UUID{authorID}).Return(map[uuid.UUID]models.Profile{authorID: {ID: authorID}}, nil)
+
+	_, err := NewWithResolver(repo, profiles, resolver).CreateArticleComment(
+		shared.WithUserID(t.Context(), authorID), "article-slug", models.NewCommentRequest{Comment: models.NewComment{Body: "body"}},
+	)
+	require.NoError(t, err)
+	require.True(t, resolved)
+}
+
 func TestCreateArticleCommentLogsRepositoryErrorWithUUIDs(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := NewMockrepository(ctrl)
-	users := NewMockUserService(ctrl)
+	users := NewMockProfileReader(ctrl)
 	authorID := uuid.New()
 	articleID := shared.NewUUID()
 	repoErr := errors.New("repository error")
@@ -71,9 +99,16 @@ func TestGetArticleCommentsUsesBatchProfiles(t *testing.T) {
 			setup: func(repo *Mockrepository, users *MockUserService) {
 				repo.EXPECT().GetArticleIDBySlug(gomock.Any(), "slug").Return(pgtype.UUID{}, nil)
 				repo.EXPECT().ListCommentsByArticleID(gomock.Any(), gomock.Any()).Return(rows, nil)
-				users.EXPECT().ProfilesByIDs(gomock.Any(), []uuid.UUID{authorID, authorID}).Return(map[uuid.UUID]models.Profile{authorID: {ID: authorID, Username: "author", Following: true}}, nil)
+				users.EXPECT().ProfilesByIDs(gomock.Any(), []uuid.UUID{authorID}).Return(map[uuid.UUID]models.Profile{authorID: {ID: authorID, Username: "author", Following: true}}, nil)
 			},
 			wantLen: 2,
+		},
+		{
+			name: "returns empty list without profile lookup",
+			setup: func(repo *Mockrepository, _ *MockUserService) {
+				repo.EXPECT().GetArticleIDBySlug(gomock.Any(), "slug").Return(pgtype.UUID{}, nil)
+				repo.EXPECT().ListCommentsByArticleID(gomock.Any(), gomock.Any()).Return(nil, nil)
+			},
 		},
 		{
 			name: "propagates list error",
@@ -107,6 +142,9 @@ func TestGetArticleCommentsUsesBatchProfiles(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Len(t, response.Comments, tt.wantLen)
+			if tt.wantLen == 0 {
+				return
+			}
 			require.Equal(t, "author", response.Comments[0].Author.Username)
 			require.Equal(t, 7, response.Comments[0].ID)
 			require.Equal(t, 8, response.Comments[1].ID)
@@ -263,12 +301,11 @@ func TestGetArticleCommentsMappingErrors(t *testing.T) {
 			repo.EXPECT().ListCommentsByArticleID(gomock.Any(), gomock.Any()).Return([]postgres.ListCommentsByArticleIDRow{validRow}, nil)
 			users.EXPECT().ProfilesByIDs(gomock.Any(), gomock.Any()).Return(map[uuid.UUID]models.Profile{}, nil)
 		}, wantErr: errors.New("missing profile")},
-		{name: "rejects invalid comment UUID", setup: func(repo *Mockrepository, users *MockUserService) {
+		{name: "rejects invalid comment UUID", setup: func(repo *Mockrepository, _ *MockUserService) {
 			repo.EXPECT().GetArticleIDBySlug(gomock.Any(), "slug").Return(shared.NewUUID(), nil)
 			row := validRow
 			row.ID = shared.NewUUID()
 			repo.EXPECT().ListCommentsByArticleID(gomock.Any(), gomock.Any()).Return([]postgres.ListCommentsByArticleIDRow{row}, nil)
-			users.EXPECT().ProfilesByIDs(gomock.Any(), gomock.Any()).Return(map[uuid.UUID]models.Profile{authorID: {}}, nil)
 		}, wantErr: errInvalidCommentID},
 	}
 
@@ -321,4 +358,20 @@ func TestCommentResponseErrors(t *testing.T) {
 			require.Nil(t, response)
 		})
 	}
+}
+
+func TestGetFindsCommentByPublicID(t *testing.T) {
+	repo := NewMockcommentRepository(gomock.NewController(t))
+	articleID := uuid.New()
+	authorID := uuid.New()
+	commentID := commentUUIDFromUint64(42)
+	now := time.Now()
+	repo.EXPECT().ListCommentsByArticleID(gomock.Any(), shared.UUIDToPG(articleID)).Return([]postgres.ListCommentsByArticleIDRow{{
+		ID: commentID, AuthorID: shared.UUIDToPG(authorID), Body: "body",
+		CreatedAt: pgtype.Timestamptz{Time: now, Valid: true}, UpdatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+	}}, nil)
+
+	record, err := NewWithResolver(repo, nil, nil).Get(t.Context(), articleID, 42)
+	require.NoError(t, err)
+	require.Equal(t, "body", record.Body)
 }

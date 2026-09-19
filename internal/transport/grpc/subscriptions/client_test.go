@@ -17,6 +17,9 @@ type fakeClient struct {
 	followResponse   *subscriptionsv1.FollowResponse
 	followErr        error
 	unfollowErr      error
+	isFollowingErr   error
+	followeeIDsErr   error
+	followingIDsErr  error
 	isFollowing      bool
 	followeeIDs      []string
 	followingIDs     []string
@@ -30,14 +33,14 @@ func (f *fakeClient) Unfollow(context.Context, *subscriptionsv1.UnfollowRequest,
 	return &subscriptionsv1.UnfollowResponse{}, f.unfollowErr
 }
 func (f *fakeClient) IsFollowing(context.Context, *subscriptionsv1.IsFollowingRequest, ...grpc.CallOption) (*subscriptionsv1.IsFollowingResponse, error) {
-	return &subscriptionsv1.IsFollowingResponse{Following: f.isFollowing}, nil
+	return &subscriptionsv1.IsFollowingResponse{Following: f.isFollowing}, f.isFollowingErr
 }
 func (f *fakeClient) ListFolloweeIDs(context.Context, *subscriptionsv1.ListFolloweeIDsRequest, ...grpc.CallOption) (*subscriptionsv1.ListFolloweeIDsResponse, error) {
-	return &subscriptionsv1.ListFolloweeIDsResponse{FolloweeIds: f.followeeIDs}, nil
+	return &subscriptionsv1.ListFolloweeIDsResponse{FolloweeIds: f.followeeIDs}, f.followeeIDsErr
 }
 func (f *fakeClient) ListFollowingIDs(_ context.Context, req *subscriptionsv1.ListFollowingIDsRequest, _ ...grpc.CallOption) (*subscriptionsv1.ListFollowingIDsResponse, error) {
 	f.listFollowingReq = req
-	return &subscriptionsv1.ListFollowingIDsResponse{FollowingIds: f.followingIDs}, nil
+	return &subscriptionsv1.ListFollowingIDsResponse{FollowingIds: f.followingIDs}, f.followingIDsErr
 }
 
 func TestClientOperations(t *testing.T) {
@@ -72,4 +75,34 @@ func TestClientRejectsMalformedResponseID(t *testing.T) {
 	client := NewClient(&fakeClient{followeeIDs: []string{"not-a-uuid"}})
 	_, err := client.FolloweeIDs(t.Context(), uuid.New())
 	require.Error(t, err)
+	client = NewClient(&fakeClient{followingIDs: []string{"not-a-uuid"}})
+	_, err = client.FollowingIDs(t.Context(), uuid.New(), []uuid.UUID{uuid.New()})
+	require.Error(t, err)
+}
+
+func TestClientMapsAllRemoteErrors(t *testing.T) {
+	t.Parallel()
+	remoteErr := grpcshared.EncodeError(serviceshared.ErrUnauthorized)
+	follower, followee := uuid.New(), uuid.New()
+	tests := map[string]func(*Client) error{
+		"unfollow": func(client *Client) error { return client.Unfollow(t.Context(), follower, followee) },
+		"is following": func(client *Client) error {
+			_, err := client.IsFollowing(t.Context(), follower, followee)
+			return err
+		},
+		"followee ids": func(client *Client) error {
+			_, err := client.FolloweeIDs(t.Context(), follower)
+			return err
+		},
+		"following ids": func(client *Client) error {
+			_, err := client.FollowingIDs(t.Context(), follower, []uuid.UUID{followee})
+			return err
+		},
+	}
+	for name, call := range tests {
+		t.Run(name, func(t *testing.T) {
+			remote := &fakeClient{unfollowErr: remoteErr, isFollowingErr: remoteErr, followeeIDsErr: remoteErr, followingIDsErr: remoteErr}
+			require.ErrorIs(t, call(NewClient(remote)), serviceshared.ErrUnauthorized)
+		})
+	}
 }

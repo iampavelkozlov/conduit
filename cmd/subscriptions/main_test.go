@@ -39,6 +39,13 @@ func TestRunRejectsInvalidLoggerBeforeConnecting(t *testing.T) {
 	require.ErrorContains(t, err, "initialize logger")
 }
 
+func TestMainRunReportsConfigurationError(t *testing.T) {
+	originalArgs := os.Args
+	t.Cleanup(func() { os.Args = originalArgs })
+	os.Args = []string{"subscriptions", "--config", filepath.Join(t.TempDir(), "missing.yaml")}
+	require.Error(t, mainRun())
+}
+
 func TestRunRejectsInvalidDatabase(t *testing.T) {
 	configPath := writeConfig(t, "info", ":9004", "://")
 	err := run(t.Context(), []string{"--config", configPath})
@@ -79,8 +86,13 @@ func TestRunWithReportsInitializationAndListenErrors(t *testing.T) {
 	require.True(t, cleaned)
 }
 
+func TestRunWithReportsConfigurationError(t *testing.T) {
+	err := runWith(t.Context(), []string{"--config", filepath.Join(t.TempDir(), "missing.yaml")}, nil, nil)
+	require.Error(t, err)
+}
+
 func TestServePublishesHealthAndShutsDown(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = listener.Close() })
 
@@ -110,8 +122,34 @@ func TestServePublishesHealthAndShutsDown(t *testing.T) {
 	}
 }
 
+func TestServeReportsListenerFailure(t *testing.T) {
+	wantErr := errors.New("accept failed")
+	server, healthServer := newGRPCServer(follow.New(nil, slog.New(slog.DiscardHandler)))
+	err := serve(t.Context(), errorListener{err: wantErr}, server, healthServer, slog.New(slog.DiscardHandler))
+	require.ErrorContains(t, err, "serve gRPC")
+	require.ErrorIs(t, err, wantErr)
+}
+
+func TestServeAcceptsStoppedServer(t *testing.T) {
+	server, healthServer := newGRPCServer(follow.New(nil, slog.New(slog.DiscardHandler)))
+	err := serve(t.Context(), errorListener{err: grpc.ErrServerStopped}, server, healthServer, slog.New(slog.DiscardHandler))
+	require.NoError(t, err)
+}
+
+type errorListener struct{ err error }
+
+func (l errorListener) Accept() (net.Conn, error) { return nil, l.err }
+func (errorListener) Close() error                { return nil }
+func (errorListener) Addr() net.Addr              { return testAddr("error-listener") }
+
+type testAddr string
+
+func (a testAddr) Network() string { return string(a) }
+func (a testAddr) String() string  { return string(a) }
+
 func writeConfig(t *testing.T, level, address, dsn string) string {
 	t.Helper()
+	t.Setenv("LOG_LEVEL", level)
 	path := filepath.Join(t.TempDir(), "subscriptions.yaml")
 	contents := []byte("db:\n  dsn: \"" + dsn + "\"\nlogger:\n  level: \"" + level + "\"\n  format: text\ngrpc:\n  address: \"" + address + "\"\n")
 	require.NoError(t, os.WriteFile(path, contents, 0o600))

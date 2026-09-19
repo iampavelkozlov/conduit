@@ -6,6 +6,7 @@ import (
 
 	serviceshared "conduit/internal/service/shared"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,13 +39,29 @@ func EncodeError(err error) error {
 
 	message := "internal error"
 	metadata := map[string]string{}
-	var apiErr *serviceshared.APIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*serviceshared.APIError](err); ok {
+		switch apiErr.Status {
+		case http.StatusUnauthorized:
+			code, reason = codes.Unauthenticated, "unauthorized"
+		case http.StatusForbidden:
+			code, reason = codes.PermissionDenied, "forbidden"
+		case http.StatusNotFound:
+			code, reason = codes.NotFound, "not_found"
+		case http.StatusConflict:
+			code, reason = codes.AlreadyExists, "conflict"
+		case http.StatusUnprocessableEntity:
+			code, reason = codes.InvalidArgument, "validation"
+		}
 		message = apiErr.Message
 		metadata["field"] = apiErr.Field
 		metadata["message"] = apiErr.Message
 	} else if code != codes.Internal {
 		message = err.Error()
+	}
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+		code, reason, message = codes.AlreadyExists, "conflict", "has already been taken"
+		metadata["field"] = uniqueField(pgErr.ConstraintName)
+		metadata["message"] = message
 	}
 
 	withDetails, detailErr := status.New(code, message).WithDetails(&errdetails.ErrorInfo{
@@ -81,6 +98,10 @@ func DecodeError(err error) error {
 				return &serviceshared.APIError{Status: http.StatusNotFound, Field: field, Message: message}
 			case codes.PermissionDenied:
 				return &serviceshared.APIError{Status: http.StatusForbidden, Field: field, Message: message}
+			case codes.AlreadyExists:
+				return &serviceshared.APIError{Status: http.StatusConflict, Field: field, Message: message}
+			case codes.Unauthenticated:
+				return &serviceshared.APIError{Status: http.StatusUnauthorized, Field: field, Message: message}
 			default:
 			}
 		}
@@ -97,5 +118,16 @@ func DecodeError(err error) error {
 		return serviceshared.ErrValidation
 	default:
 		return err
+	}
+}
+
+func uniqueField(constraint string) string {
+	switch constraint {
+	case "users_username_key":
+		return "username"
+	case "users_email_key":
+		return "email"
+	default:
+		return "body"
 	}
 }

@@ -35,15 +35,24 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	return runWith(ctx, *configPath, *addr, initializeApplication, func(server *http.Server) error {
+		return server.ListenAndServe()
+	}, func(server *http.Server, ctx context.Context) error { return server.Shutdown(ctx) })
+}
 
-	app, cleanup, err := initializeApplication(ctx, *configPath)
+type applicationInitializer func(context.Context, string) (*application, func(), error)
+type httpServerRunner func(*http.Server) error
+type httpServerShutdown func(*http.Server, context.Context) error
+
+func runWith(ctx context.Context, configPath, addr string, initialize applicationInitializer, serve httpServerRunner, shutdown httpServerShutdown) error {
+	app, cleanup, err := initialize(ctx, configPath)
 	if err != nil {
 		return fmt.Errorf("initialize application: %w", err)
 	}
 	defer cleanup()
 
 	server := &http.Server{
-		Addr:              *addr,
+		Addr:              addr,
 		Handler:           app.handler,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
@@ -52,10 +61,10 @@ func run() error {
 		MaxHeaderBytes:    1 << 20,
 	}
 
-	app.logger.Info("server initialized", "addr", *addr)
+	app.logger.InfoContext(ctx, "server initialized", "addr", addr)
 	serverErr := make(chan error, 1)
 	go func() {
-		serverErr <- server.ListenAndServe()
+		serverErr <- serve(server)
 	}()
 
 	select {
@@ -65,12 +74,12 @@ func run() error {
 		}
 		return nil
 	case <-ctx.Done():
-		app.logger.Info("shutting down HTTP server")
+		app.logger.InfoContext(context.WithoutCancel(ctx), "shutting down HTTP server")
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
 	defer cancel()
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err := shutdown(server, shutdownCtx); err != nil {
 		closeErr := server.Close()
 		serveErr := <-serverErr
 		if errors.Is(serveErr, http.ErrServerClosed) {

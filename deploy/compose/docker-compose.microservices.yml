@@ -71,6 +71,21 @@ services:
       start_period: 20s
     networks: [conduit]
 
+  kafka-init:
+    image: apache/kafka:4.1.0
+    profiles: [microservices]
+    restart: "no"
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        for topic in conduit.articles conduit.profiles conduit.subscriptions; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 6 --replication-factor 1
+        done
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks: [conduit]
+
   redis:
     image: redis:8.2-alpine
     restart: unless-stopped
@@ -88,6 +103,7 @@ services:
 
   gateway-migrate:
     <<: *service
+    profiles: [microservices]
     entrypoint: ["/app/goose"]
     command: ["-dir", "/app/migrations", "postgres", "postgres://conduit_gateway:gateway@postgres:5432/conduit_gateway?sslmode=disable", "up"]
     restart: "no"
@@ -99,21 +115,29 @@ services:
 
   gateway:
     <<: *service
+    profiles: [microservices]
     entrypoint: ["/app/conduit"]
     command: ["--addr=:8000"]
     environment:
       <<: *service-environment
       DB_DSN: postgres://conduit_gateway:gateway@postgres:5432/conduit_gateway?sslmode=disable
-      AUTH_GRPC_ADDR: auth:9001
-      PROFILE_GRPC_ADDR: profile:9002
-      POSTS_GRPC_ADDR: posts:9003
-      SUBSCRIPTIONS_GRPC_ADDR: subscriptions:9004
-      COMMENTS_GRPC_ADDR: comments:9005
+      SERVICES_MODE: grpc
+      AUTH_GRPC_TARGET: auth:9001
+      PROFILE_GRPC_TARGET: profile:9002
+      POSTS_GRPC_TARGET: posts:9003
+      SUBSCRIPTIONS_GRPC_TARGET: subscriptions:9004
+      COMMENTS_GRPC_TARGET: comments:9005
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-development-only-change-me-jwt-secret}
       AUTH_PASSWORD_PEPPER: ${AUTH_PASSWORD_PEPPER:-development-change-me-pepper}
       HTTP_ALLOWED_ORIGINS: ${HTTP_ALLOWED_ORIGINS:-*}
     ports:
       - "${GATEWAY_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8000/metrics"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
     depends_on:
       <<: *service-dependencies
       gateway-migrate:
@@ -131,6 +155,20 @@ services:
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-development-only-change-me-jwt-secret}
       AUTH_PASSWORD_PEPPER: ${AUTH_PASSWORD_PEPPER:-development-change-me-pepper}
     ports: ["9001:9001"]
+    depends_on:
+      <<: *service-dependencies
+      auth-migrate:
+        condition: service_completed_successfully
+
+  auth-migrate:
+    <<: *service
+    profiles: [microservices]
+    entrypoint: ["/app/goose"]
+    command: ["-dir", "/app/migrations/auth", "postgres", "postgres://conduit_auth:auth@postgres:5432/conduit_auth?sslmode=disable", "up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   profile:
     <<: *service
@@ -141,8 +179,22 @@ services:
       <<: *service-environment
       PROFILE_DB_DSN: postgres://conduit_profile:profile@postgres:5432/conduit_profile?sslmode=disable
       PROFILE_GRPC_ADDR: :9002
-      SUBSCRIPTIONS_GRPC_ADDR: subscriptions:9004
+      PROFILE_REDIS_ADDR: redis:6379
     ports: ["9002:9002"]
+    depends_on:
+      <<: *service-dependencies
+      profile-migrate:
+        condition: service_completed_successfully
+
+  profile-migrate:
+    <<: *service
+    profiles: [microservices]
+    entrypoint: ["/app/goose"]
+    command: ["-dir", "/app/migrations/profile", "postgres", "postgres://conduit_profile:profile@postgres:5432/conduit_profile?sslmode=disable", "up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   posts:
     <<: *service
@@ -156,6 +208,20 @@ services:
       PROFILE_GRPC_ADDR: profile:9002
       SUBSCRIPTIONS_GRPC_ADDR: subscriptions:9004
     ports: ["9003:9003"]
+    depends_on:
+      <<: *service-dependencies
+      posts-migrate:
+        condition: service_completed_successfully
+
+  posts-migrate:
+    <<: *service
+    profiles: [microservices]
+    entrypoint: ["/app/goose"]
+    command: ["-dir", "/app/migrations/posts", "postgres", "postgres://conduit_posts:posts@postgres:5432/conduit_posts?sslmode=disable", "up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   subscriptions:
     <<: *service
@@ -167,12 +233,26 @@ services:
       SUBSCRIPTIONS_DB_DSN: postgres://conduit_subscriptions:subscriptions@postgres:5432/conduit_subscriptions?sslmode=disable
       SUBSCRIPTIONS_GRPC_ADDR: :9004
     ports: ["9004:9004"]
+    depends_on:
+      <<: *service-dependencies
+      subscriptions-migrate:
+        condition: service_completed_successfully
+
+  subscriptions-migrate:
+    <<: *service
+    profiles: [microservices]
+    entrypoint: ["/app/goose"]
+    command: ["-dir", "/app/migrations/subscriptions", "postgres", "postgres://conduit_subscriptions:subscriptions@postgres:5432/conduit_subscriptions?sslmode=disable", "up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   comments:
     <<: *service
     profiles: [microservices]
     entrypoint: ["/app/comments"]
-    command: ["--addr=:9005"]
+    command: ["--config=/app/config/comments.yaml", "--addr=:9005"]
     environment:
       <<: *service-environment
       COMMENTS_DB_DSN: postgres://conduit_comments:comments@postgres:5432/conduit_comments?sslmode=disable
@@ -180,6 +260,77 @@ services:
       POSTS_GRPC_ADDR: posts:9003
       PROFILE_GRPC_ADDR: profile:9002
     ports: ["9005:9005"]
+    depends_on:
+      <<: *service-dependencies
+      comments-migrate:
+        condition: service_completed_successfully
+
+  comments-migrate:
+    <<: *service
+    profiles: [microservices]
+    entrypoint: ["/app/goose"]
+    command: ["-dir", "/app/migrations/comments", "postgres", "postgres://conduit_comments:comments@postgres:5432/conduit_comments?sslmode=disable", "up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  subscriptions-outbox:
+    <<: *service
+    profiles: [microservices]
+    entrypoint: ["/app/outbox-relay"]
+    command: ["--config=/app/config/outbox-relay.yaml"]
+    environment:
+      <<: *service-environment
+      OUTBOX_DB_DSN: postgres://conduit_subscriptions:subscriptions@postgres:5432/conduit_subscriptions?sslmode=disable
+      OUTBOX_SOURCE: subscriptions
+      OUTBOX_METRICS_ADDR: :9100
+      KAFKA_CLIENT_ID: subscriptions-outbox
+    ports: ["9101:9100"]
+    depends_on:
+      <<: *service-dependencies
+      subscriptions-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+
+  posts-outbox:
+    <<: *service
+    profiles: [microservices]
+    entrypoint: ["/app/outbox-relay"]
+    command: ["--config=/app/config/outbox-relay.yaml"]
+    environment:
+      <<: *service-environment
+      OUTBOX_DB_DSN: postgres://conduit_posts:posts@postgres:5432/conduit_posts?sslmode=disable
+      OUTBOX_SOURCE: posts
+      OUTBOX_METRICS_ADDR: :9100
+      KAFKA_CLIENT_ID: posts-outbox
+    ports: ["9102:9100"]
+    depends_on:
+      <<: *service-dependencies
+      posts-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+
+  profile-outbox:
+    <<: *service
+    profiles: [microservices]
+    entrypoint: ["/app/outbox-relay"]
+    command: ["--config=/app/config/outbox-relay.yaml"]
+    environment:
+      <<: *service-environment
+      OUTBOX_DB_DSN: postgres://conduit_profile:profile@postgres:5432/conduit_profile?sslmode=disable
+      OUTBOX_SOURCE: profile
+      OUTBOX_METRICS_ADDR: :9100
+      KAFKA_CLIENT_ID: profile-outbox
+    ports: ["9103:9100"]
+    depends_on:
+      <<: *service-dependencies
+      profile-migrate:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
 
 volumes:
   postgres-data:

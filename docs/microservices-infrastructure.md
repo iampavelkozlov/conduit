@@ -24,12 +24,11 @@ The existing root `docker-compose.yml` is unchanged and remains the supported
 monolith workflow. The microservice scaffold is separate:
 
 ```bash
-docker-compose -f deploy/compose/docker-compose.microservices.yml up -d postgres kafka redis gateway-migrate gateway
+docker-compose -f deploy/compose/docker-compose.microservices.yml up -d postgres kafka redis
 ```
 
-This starts the current gateway against its own database and brings up the
-platform dependencies. After all service binaries have been added to the
-image, enable the complete topology:
+This starts only the shared local platform. Start the complete topology,
+including the gRPC-backed gateway, with:
 
 ```bash
 docker-compose -f deploy/compose/docker-compose.microservices.yml --profile microservices up --build
@@ -68,14 +67,15 @@ kubectl apply -k deploy/kubernetes/jobs
 kubectl -n conduit get pods,svc,hpa,pdb
 ```
 
-The gateway migration job uses the current `/app/migrations` directory. Jobs
-for extracted services are created suspended because their migration trees do
-not exist yet. Once a service image owns its migrations, delete and recreate
-the job if necessary, then unsuspend it, for example:
+The jobs overlay contains one active migration Job per database plus an
+idempotent Kafka topic-initialization Job. Apply it during a rollout before
+considering the corresponding application ready; each migration Job uses only
+that service's `/app/migrations/<service>` directory.
 
-```bash
-kubectl -n conduit patch job subscriptions-migrate --type merge -p '{"spec":{"suspend":false}}'
-```
+The three replicas and disruption budgets assume a multi-node cluster with
+enough allocatable CPU and memory. On a small single-node kind cluster, scale
+the Deployments to one replica only for local validation; keep the checked-in
+replica counts for an actual highly available cluster.
 
 The checked-in Secret contains development defaults so the base is
 self-contained. A non-local overlay must replace it with External Secrets,

@@ -6,9 +6,7 @@ import (
 	"context"
 
 	"conduit/internal/config"
-	"conduit/internal/service"
 	"conduit/internal/transport/http"
-	"conduit/internal/transport/middleware"
 
 	"github.com/google/wire"
 )
@@ -34,8 +32,8 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 		provideArticleService,
 		provideCommentService,
 		provideTagService,
-		service.New,
-		middleware.NewAuthMiddleware,
+		provideApplicationService,
+		provideAuthMiddleware,
 		http.NewServer,
 		provideHTTPHandler,
 		newApplication,

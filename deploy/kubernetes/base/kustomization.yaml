@@ -12,5 +12,7 @@ resources:
 labels:
   - pairs:
       app.kubernetes.io/part-of: conduit
-    includeSelectors: true
+    # Selectors that intentionally target kube-system (DNS) must not be
+    # rewritten to require the Conduit label.
+    includeSelectors: false
     includeTemplates: true

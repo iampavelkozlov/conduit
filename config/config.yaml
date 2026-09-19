@@ -16,7 +16,11 @@ auth:
   refresh_token_ttl: "720h"
 
 services:
-  # Leave empty for the in-process fallback. Set to dns:///localhost:9004 to
-  # route follow operations through the extracted subscriptions service.
-  subscriptions:
-    target: ""
+  # Switch to grpc only after all service databases have been migrated.
+  mode: "local"
+  timeout: "3s"
+  auth: { target: "localhost:9001" }
+  profile: { target: "localhost:9002" }
+  posts: { target: "localhost:9003" }
+  subscriptions: { target: "localhost:9004" }
+  comments: { target: "localhost:9005" }

@@ -141,3 +141,10 @@ func TestFollowingIDs(t *testing.T) {
 		})
 	}
 }
+
+func TestFollowingIDsSkipsRepositoryForEmptyCandidates(t *testing.T) {
+	repo := NewMockrepository(gomock.NewController(t))
+	result, err := New(repo).FollowingIDs(t.Context(), uuid.New(), nil)
+	require.NoError(t, err)
+	require.Empty(t, result)
+}

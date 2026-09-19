@@ -8,9 +8,7 @@ package main
 
 import (
 	"conduit/internal/config"
-	"conduit/internal/service"
 	"conduit/internal/transport/http"
-	"conduit/internal/transport/middleware"
 	"context"
 )
 
@@ -39,36 +37,40 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 	querier := provideQueries(pool, repository)
 	v2 := provideQueryDecorator(repository)
 	transactions := provideTransactions(pool, v2)
-	dependency, cleanup2, err := provideFollowService(querier, configConfig, logger)
-	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
-	userService := provideUserService(querier, dependency, configConfig, logger)
+	dependency, cleanup2 := provideFollowService(querier, configConfig, logger)
+	service := provideUserService(querier, dependency, configConfig, logger)
 	tagService := provideTagService(querier, logger)
 	articletagService := provideArticleTagService(querier, logger)
 	favoriteService := provideFavoriteService(querier, logger)
-	articleService := provideArticleService(querier, transactions, userService, tagService, articletagService, favoriteService, dependency, logger)
+	articleService := provideArticleService(querier, transactions, service, tagService, articletagService, favoriteService, dependency, logger)
 	authService := provideAuthService(querier, transactions, configConfig, logger)
-	commentService := provideCommentService(querier, userService, logger)
-	serviceService := service.New(articleService, authService, commentService, tagService, userService)
-	authMiddleware := middleware.NewAuthMiddleware(serviceService)
-	metricsHTTP, err := provideHTTPMetrics(v)
+	commentService := provideCommentService(querier, service, logger)
+	v3, cleanup3, err := provideApplicationService(articleService, authService, commentService, tagService, service, configConfig)
 	if err != nil {
 		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
-	panicReporter := providePanicReporter(logger)
-	strictServerInterface := http.NewServer(serviceService)
-	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, serviceService, v)
+	authMiddleware := provideAuthMiddleware(v3)
+	metricsHTTP, err := provideHTTPMetrics(v)
 	if err != nil {
+		cleanup3()
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	panicReporter := providePanicReporter(logger)
+	strictServerInterface := http.NewServer(v3)
+	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, v3, v)
+	if err != nil {
+		cleanup3()
 		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
 	mainApplication := newApplication(logger, handler)
 	return mainApplication, func() {
+		cleanup3()
 		cleanup2()
 		cleanup()
 	}, nil

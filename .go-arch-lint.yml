@@ -32,7 +32,12 @@ vendors:
       - google.golang.org/grpc
       - google.golang.org/grpc/**
       - google.golang.org/genproto/**
+  kafka: { in: github.com/twmb/franz-go/** }
   protobuf: { in: google.golang.org/protobuf/** }
+  redis:
+    in:
+      - github.com/redis/go-redis/v9
+      - github.com/redis/go-redis/**
   utilities:
     in:
       - github.com/google/uuid
@@ -50,11 +55,15 @@ components:
   metrics: { in: internal/metrics }
   api: { in: internal/gen/http }
   rpcapi: { in: internal/gen/grpc/** }
+  eventing: { in: internal/eventing }
+  cache: { in: internal/cache/** }
   frontend: { in: frontend }
   models: { in: internal/models }
   repository:
     in:
       - internal/gen/postgres
+      - internal/gen/auth/postgres
+      - internal/gen/profile/postgres
       - internal/repository/**
       - internal/storage/**
   service: { in: internal/service/** }
@@ -64,8 +73,10 @@ deps:
   composition:
     mayDependOn:
       - api
+      - cache
       - configuration
       - frontend
+      - eventing
       - logging
       - metrics
       - repository
@@ -82,6 +93,20 @@ deps:
   configuration:
     canUse:
       - config
+  eventing:
+    mayDependOn:
+      - repository
+    canUse:
+      - database
+      - kafka
+      - observability
+      - utilities
+  cache:
+    mayDependOn:
+      - service
+    canUse:
+      - redis
+      - utilities
   logging:
     mayDependOn:
       - configuration
@@ -132,8 +157,10 @@ deps:
       - service
       - transport
     canUse:
+      - crypto
       - database
       - grpc
       - observability
+      - protobuf
       - utilities
       - web

@@ -53,4 +53,10 @@ grpc:
 
 	_, err = LoadSubscriptions(filepath.Join(t.TempDir(), "missing.yaml"))
 	require.ErrorContains(t, err, "read subscriptions config")
+
+	invalidPath := filepath.Join(t.TempDir(), "invalid.yaml")
+	require.NoError(t, os.WriteFile(invalidPath, []byte("db:\n  dsn: ''\n"), 0o600))
+	t.Setenv("SUBSCRIPTIONS_DB_DSN", " ")
+	_, err = LoadSubscriptions(invalidPath)
+	require.ErrorContains(t, err, "validate subscriptions config")
 }

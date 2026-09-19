@@ -1,7 +1,7 @@
 db:
   # A separate database is the ownership boundary even when both databases
   # run in the same local PostgreSQL instance.
-  dsn: "postgres://postgres:postgres@localhost:5432/subscriptions?sslmode=disable"
+  dsn: "postgres://postgres:postgres@localhost:5432/conduit_subscriptions?sslmode=disable"
 
 logger:
   level: "info"

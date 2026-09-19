@@ -4,11 +4,7 @@ import (
 	"context"
 
 	"conduit/internal/models"
-	articlepkg "conduit/internal/service/article"
 	authpkg "conduit/internal/service/auth"
-	commentpkg "conduit/internal/service/comment"
-	tagpkg "conduit/internal/service/tag"
-	userpkg "conduit/internal/service/user"
 )
 
 type Service struct {
@@ -20,11 +16,11 @@ type Service struct {
 }
 
 func New(
-	articleService *articlepkg.Service,
-	authService *authpkg.Service,
-	commentService *commentpkg.Service,
-	tagService *tagpkg.Service,
-	userService *userpkg.Service,
+	articleService articleService,
+	authService authService,
+	commentService commentService,
+	tagService tagService,
+	userService userService,
 ) *Service {
 	return &Service{
 		article: articleService,

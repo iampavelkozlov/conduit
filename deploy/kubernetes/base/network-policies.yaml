@@ -50,7 +50,7 @@ spec:
     matchExpressions:
       - key: app.kubernetes.io/name
         operator: In
-        values: [gateway, auth, profile, posts, subscriptions, comments]
+        values: [gateway, auth, profile, posts, subscriptions, comments, subscriptions-outbox, posts-outbox, profile-outbox]
   policyTypes: [Ingress, Egress]
   ingress:
     - from:
@@ -58,7 +58,7 @@ spec:
             matchExpressions:
               - key: app.kubernetes.io/name
                 operator: In
-                values: [gateway, auth, profile, posts, subscriptions, comments]
+                values: [gateway, auth, profile, posts, subscriptions, comments, subscriptions-outbox, posts-outbox, profile-outbox]
       ports:
         - {protocol: TCP, port: 8000}
         - {protocol: TCP, port: 9001}
@@ -66,13 +66,14 @@ spec:
         - {protocol: TCP, port: 9003}
         - {protocol: TCP, port: 9004}
         - {protocol: TCP, port: 9005}
+        - {protocol: TCP, port: 9100}
   egress:
     - to:
         - podSelector:
             matchExpressions:
               - key: app.kubernetes.io/name
                 operator: In
-                values: [gateway, auth, profile, posts, subscriptions, comments, postgres, redis, kafka]
+                values: [gateway, auth, profile, posts, subscriptions, comments, subscriptions-outbox, posts-outbox, profile-outbox, postgres, redis, kafka, deployment-job]
       ports:
         - {protocol: TCP, port: 5432}
         - {protocol: TCP, port: 6379}
@@ -101,7 +102,7 @@ spec:
             matchExpressions:
               - key: app.kubernetes.io/name
                 operator: In
-                values: [gateway, auth, profile, posts, subscriptions, comments, postgres, redis, kafka]
+                values: [gateway, auth, profile, posts, subscriptions, comments, subscriptions-outbox, posts-outbox, profile-outbox, postgres, redis, kafka, deployment-job]
       ports:
         - {protocol: TCP, port: 5432}
         - {protocol: TCP, port: 6379}
@@ -117,3 +118,23 @@ spec:
       ports:
         - {protocol: TCP, port: 9092}
         - {protocol: TCP, port: 9093}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deployment-jobs
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: deployment-job
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [postgres, kafka]
+      ports:
+        - {protocol: TCP, port: 5432}
+        - {protocol: TCP, port: 9092}

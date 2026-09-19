@@ -106,6 +106,240 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: subscriptions-outbox
+spec:
+  selector:
+    app.kubernetes.io/name: subscriptions-outbox
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: subscriptions-outbox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: subscriptions-outbox
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: subscriptions-outbox
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: subscriptions-outbox
+      containers:
+        - name: relay
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/outbox-relay"]
+          args: ["--config=/app/config/outbox-relay.yaml"]
+          ports:
+            - name: metrics
+              containerPort: 9100
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: OUTBOX_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: SUBSCRIPTIONS_DB_DSN
+            - {name: OUTBOX_SOURCE, value: "subscriptions"}
+            - {name: OUTBOX_METRICS_ADDR, value: ":9100"}
+            - {name: KAFKA_CLIENT_ID, value: "subscriptions-outbox"}
+          startupProbe:
+            httpGet: {path: /healthz, port: metrics}
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: posts-outbox
+spec:
+  selector:
+    app.kubernetes.io/name: posts-outbox
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: posts-outbox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: posts-outbox
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: posts-outbox
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: posts-outbox
+      containers:
+        - name: relay
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/outbox-relay"]
+          args: ["--config=/app/config/outbox-relay.yaml"]
+          ports:
+            - name: metrics
+              containerPort: 9100
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: OUTBOX_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: POSTS_DB_DSN
+            - {name: OUTBOX_SOURCE, value: "posts"}
+            - {name: OUTBOX_METRICS_ADDR, value: ":9100"}
+            - {name: KAFKA_CLIENT_ID, value: "posts-outbox"}
+          startupProbe:
+            httpGet: {path: /healthz, port: metrics}
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: profile-outbox
+spec:
+  selector:
+    app.kubernetes.io/name: profile-outbox
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profile-outbox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: profile-outbox
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: profile-outbox
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: profile-outbox
+      containers:
+        - name: relay
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/outbox-relay"]
+          args: ["--config=/app/config/outbox-relay.yaml"]
+          ports:
+            - name: metrics
+              containerPort: 9100
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: OUTBOX_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: PROFILE_DB_DSN
+            - {name: OUTBOX_SOURCE, value: "profile"}
+            - {name: OUTBOX_METRICS_ADDR, value: ":9100"}
+            - {name: KAFKA_CLIENT_ID, value: "profile-outbox"}
+          startupProbe:
+            httpGet: {path: /healthz, port: metrics}
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: auth
 spec:
   selector:
@@ -526,7 +760,7 @@ spec:
           image: conduit:local
           imagePullPolicy: IfNotPresent
           command: ["/app/comments"]
-          args: ["--addr=:9005"]
+          args: ["--config=/app/config/comments.yaml", "--addr=:9005"]
           ports:
             - name: grpc
               containerPort: 9005

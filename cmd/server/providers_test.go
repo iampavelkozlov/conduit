@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -52,8 +55,7 @@ func TestSimpleProviders(t *testing.T) {
 	require.NotNil(t, provideQueries(nil, repositoryMetrics))
 	require.NotNil(t, provideQueryDecorator(repositoryMetrics)(querier))
 	transactions := provideTransactions(nil, func(value postgres.Querier) postgres.Querier { return value })
-	followService, closeFollows, err := provideFollowService(querier, cfg, logger)
-	require.NoError(t, err)
+	followService, closeFollows := provideFollowService(querier, cfg, logger)
 	t.Cleanup(closeFollows)
 	favoriteService := provideFavoriteService(querier, logger)
 	articleTagService := provideArticleTagService(querier, logger)
@@ -78,11 +80,34 @@ func TestProvideRemoteFollowService(t *testing.T) {
 	cfg := &config.Config{Services: config.RemoteServicesConfig{
 		Subscriptions: config.GRPCClientConfig{Target: "dns:///localhost:9004"},
 	}}
-	dependency, cleanup, err := provideFollowService(providerQuerierStub{}, cfg, slog.Default())
-	require.NoError(t, err)
+	dependency, cleanup := provideFollowService(providerQuerierStub{}, cfg, slog.Default())
 	require.NotNil(t, dependency)
 	require.NotNil(t, cleanup)
 	cleanup()
+}
+
+func TestProvideApplicationServiceModes(t *testing.T) {
+	local, cleanup, err := provideApplicationService(nil, nil, nil, nil, nil, &config.Config{Services: config.RemoteServicesConfig{Mode: "local"}})
+	require.NoError(t, err)
+	require.NotNil(t, local)
+	cleanup()
+
+	remote, cleanup, err := provideApplicationService(nil, nil, nil, nil, nil, &config.Config{Services: config.RemoteServicesConfig{
+		Mode: "grpc", Timeout: time.Second,
+		Auth: config.AuthGRPCClientConfig{Target: "dns:///auth:9001"}, Profile: config.ProfileGRPCClientConfig{Target: "dns:///profile:9002"},
+		Posts: config.PostsGRPCClientConfig{Target: "dns:///posts:9003"}, Comments: config.CommentsGRPCClientConfig{Target: "dns:///comments:9005"},
+		Subscriptions: config.SubscriptionsGRPCClientConfig{Target: "dns:///subscriptions:9004"},
+	}})
+	require.NoError(t, err)
+	require.NotNil(t, remote)
+	cleanup()
+
+	remote, cleanup, err = provideApplicationService(nil, nil, nil, nil, nil, &config.Config{Services: config.RemoteServicesConfig{
+		Mode: "grpc", Auth: config.AuthGRPCClientConfig{Target: "dns:///auth:9001"}, Profile: config.ProfileGRPCClientConfig{Target: "%"},
+	}})
+	require.Error(t, err)
+	require.Nil(t, remote)
+	require.Nil(t, cleanup)
 }
 
 func TestProvideDatabaseRejectsInvalidDSN(t *testing.T) {
@@ -97,6 +122,7 @@ func TestProvideHTTPHandler(t *testing.T) {
 	httpMetrics, err := metrics.NewHTTP(registry)
 	require.NoError(t, err)
 	facade := service.New(nil, nil, nil, nil, nil)
+	require.NotNil(t, provideAuthMiddleware(facade))
 	handler, err := provideHTTPHandler(
 		&config.Config{HTTP: config.HTTPConfig{AllowedOrigins: []string{"*"}}},
 		transportmiddleware.NewAuthMiddleware(facade),
@@ -149,6 +175,75 @@ func TestRunReportsConfigurationError(t *testing.T) {
 
 	err := run()
 	require.ErrorContains(t, err, "initialize application")
+}
+
+func TestRunWithReportsInitializationAndServeErrors(t *testing.T) {
+	wantErr := errors.New("unavailable")
+	err := runWith(t.Context(), "config.yaml", "127.0.0.1:0", func(context.Context, string) (*application, func(), error) {
+		return nil, nil, wantErr
+	}, func(*http.Server) error { return nil }, func(*http.Server, context.Context) error { return nil })
+	require.ErrorIs(t, err, wantErr)
+
+	cleaned := false
+	app := &application{logger: slog.New(slog.DiscardHandler), handler: http.NotFoundHandler()}
+	err = runWith(t.Context(), "config.yaml", "127.0.0.1:0", func(context.Context, string) (*application, func(), error) {
+		return app, func() { cleaned = true }, nil
+	}, func(*http.Server) error { return wantErr }, func(*http.Server, context.Context) error { return nil })
+	require.ErrorIs(t, err, wantErr)
+	require.True(t, cleaned)
+}
+
+func TestRunWithGracefulCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = listener.Close() })
+	cleaned := false
+	app := &application{logger: slog.New(slog.DiscardHandler), handler: http.NotFoundHandler()}
+	err = runWith(ctx, "config.yaml", "127.0.0.1:0", func(context.Context, string) (*application, func(), error) {
+		return app, func() { cleaned = true }, nil
+	}, func(server *http.Server) error { return server.Serve(listener) }, func(server *http.Server, ctx context.Context) error { return server.Shutdown(ctx) })
+	require.NoError(t, err)
+	require.True(t, cleaned)
+}
+
+func TestRunWithAcceptsServerClosed(t *testing.T) {
+	app := &application{logger: slog.New(slog.DiscardHandler), handler: http.NotFoundHandler()}
+	err := runWith(t.Context(), "config.yaml", "127.0.0.1:0", func(context.Context, string) (*application, func(), error) {
+		return app, func() {}, nil
+	}, func(*http.Server) error { return http.ErrServerClosed }, func(*http.Server, context.Context) error { return nil })
+	require.NoError(t, err)
+}
+
+func TestRunWithShutdownFailures(t *testing.T) {
+	wantErr := errors.New("shutdown failed")
+	serveErr := errors.New("serve failed")
+	app := &application{logger: slog.New(slog.DiscardHandler), handler: http.NotFoundHandler()}
+	for name, shutdownErr := range map[string]error{"shutdown": wantErr, "serve during shutdown": nil} {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			release := make(chan struct{})
+			err := runWith(ctx, "config.yaml", "127.0.0.1:0", func(context.Context, string) (*application, func(), error) {
+				return app, func() {}, nil
+			}, func(*http.Server) error {
+				<-release
+				if shutdownErr != nil {
+					return http.ErrServerClosed
+				}
+				return serveErr
+			}, func(*http.Server, context.Context) error {
+				close(release)
+				return shutdownErr
+			})
+			if shutdownErr != nil {
+				require.ErrorIs(t, err, wantErr)
+				return
+			}
+			require.ErrorIs(t, err, serveErr)
+		})
+	}
 }
 
 type providerQuerierStub struct{ postgres.Querier }

@@ -10,9 +10,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+func TestRegister(t *testing.T) {
+	server := grpc.NewServer()
+	Register(server, NewMockservice(gomock.NewController(t)))
+	_, ok := server.GetServiceInfo()[subscriptionsv1.SubscriptionsService_ServiceDesc.ServiceName]
+	require.True(t, ok)
+}
 
 func TestServerFollow(t *testing.T) {
 	followerID, followeeID := uuid.New(), uuid.New()
@@ -144,6 +152,10 @@ func TestServerRejectsInvalidUUIDsBeforeCallingService(t *testing.T) {
 		},
 		"list candidate": func() error {
 			_, err := server.ListFollowingIDs(t.Context(), &subscriptionsv1.ListFollowingIDsRequest{FollowerId: validID, CandidateIds: []string{"invalid"}})
+			return err
+		},
+		"list following follower": func() error {
+			_, err := server.ListFollowingIDs(t.Context(), &subscriptionsv1.ListFollowingIDsRequest{FollowerId: "invalid"})
 			return err
 		},
 	}

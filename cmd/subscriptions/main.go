@@ -34,12 +34,16 @@ const (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	if err := run(ctx, os.Args[1:]); err != nil {
+	if err := mainRun(); err != nil {
 		log.Printf("subscriptions: %v", err)
 		os.Exit(1)
 	}
+}
+
+func mainRun() error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return run(ctx, os.Args[1:])
 }
 
 func run(ctx context.Context, args []string) error {

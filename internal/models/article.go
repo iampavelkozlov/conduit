@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Article struct {
 	Author         Profile
@@ -9,6 +13,7 @@ type Article struct {
 	Description    string
 	Favorited      bool
 	FavoritesCount int
+	ID             uuid.UUID
 	Slug           string
 	TagList        []string
 	Title          string

@@ -31,7 +31,8 @@ func NewServer(service service) *Server {
 }
 
 func Register(registrar grpc.ServiceRegistrar, service service) {
-	subscriptionsv1.RegisterSubscriptionsServiceServer(registrar, NewServer(service))
+	var handler subscriptionsv1.SubscriptionsServiceServer = NewServer(service)
+	subscriptionsv1.RegisterSubscriptionsServiceServer(registrar, handler)
 }
 
 func (s *Server) Follow(ctx context.Context, request *subscriptionsv1.FollowRequest) (*subscriptionsv1.FollowResponse, error) {

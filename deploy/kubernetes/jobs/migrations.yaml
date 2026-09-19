@@ -1,5 +1,5 @@
-# These jobs are intentionally not part of the base. Service-specific jobs are
-# suspended until their images contain /app/goose and /app/migrations/<service>.
+# Migration jobs are applied separately from the long-running base so schema
+# rollout remains an explicit deployment step.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -8,6 +8,8 @@ spec:
   ttlSecondsAfterFinished: 600
   backoffLimit: 3
   template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
     spec:
       restartPolicy: Never
       containers:
@@ -24,10 +26,11 @@ kind: Job
 metadata:
   name: auth-migrate
 spec:
-  suspend: true
   ttlSecondsAfterFinished: 600
   backoffLimit: 3
   template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
     spec:
       restartPolicy: Never
       containers:
@@ -44,10 +47,11 @@ kind: Job
 metadata:
   name: profile-migrate
 spec:
-  suspend: true
   ttlSecondsAfterFinished: 600
   backoffLimit: 3
   template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
     spec:
       restartPolicy: Never
       containers:
@@ -64,10 +68,11 @@ kind: Job
 metadata:
   name: posts-migrate
 spec:
-  suspend: true
   ttlSecondsAfterFinished: 600
   backoffLimit: 3
   template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
     spec:
       restartPolicy: Never
       containers:
@@ -84,10 +89,11 @@ kind: Job
 metadata:
   name: comments-migrate
 spec:
-  suspend: true
   ttlSecondsAfterFinished: 600
   backoffLimit: 3
   template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
     spec:
       restartPolicy: Never
       containers:
@@ -104,10 +110,11 @@ kind: Job
 metadata:
   name: subscriptions-migrate
 spec:
-  suspend: true
   ttlSecondsAfterFinished: 600
   backoffLimit: 3
   template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
     spec:
       restartPolicy: Never
       containers:
@@ -118,3 +125,25 @@ spec:
           env:
             - name: SUBSCRIPTIONS_DB_DSN
               valueFrom: {secretKeyRef: {name: conduit-secrets, key: SUBSCRIPTIONS_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topics
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 6
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: kafka-topics
+          image: apache/kafka:4.1.0
+          command: [/bin/bash, -ec]
+          args:
+            - |
+              for topic in conduit.articles conduit.profiles conduit.subscriptions; do
+                /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$topic" --partitions 6 --replication-factor 1
+              done

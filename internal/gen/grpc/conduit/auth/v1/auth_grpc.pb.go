@@ -25,6 +25,7 @@ const (
 	AuthService_ValidateAccessToken_FullMethodName = "/conduit.auth.v1.AuthService/ValidateAccessToken"
 	AuthService_GetAccount_FullMethodName          = "/conduit.auth.v1.AuthService/GetAccount"
 	AuthService_UpdateCredentials_FullMethodName   = "/conduit.auth.v1.AuthService/UpdateCredentials"
+	AuthService_DeleteAccount_FullMethodName       = "/conduit.auth.v1.AuthService/DeleteAccount"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -39,6 +40,7 @@ type AuthServiceClient interface {
 	ValidateAccessToken(ctx context.Context, in *ValidateAccessTokenRequest, opts ...grpc.CallOption) (*ValidateAccessTokenResponse, error)
 	GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*GetAccountResponse, error)
 	UpdateCredentials(ctx context.Context, in *UpdateCredentialsRequest, opts ...grpc.CallOption) (*UpdateCredentialsResponse, error)
+	DeleteAccount(ctx context.Context, in *DeleteAccountRequest, opts ...grpc.CallOption) (*DeleteAccountResponse, error)
 }
 
 type authServiceClient struct {
@@ -109,6 +111,16 @@ func (c *authServiceClient) UpdateCredentials(ctx context.Context, in *UpdateCre
 	return out, nil
 }
 
+func (c *authServiceClient) DeleteAccount(ctx context.Context, in *DeleteAccountRequest, opts ...grpc.CallOption) (*DeleteAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteAccountResponse)
+	err := c.cc.Invoke(ctx, AuthService_DeleteAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -121,6 +133,7 @@ type AuthServiceServer interface {
 	ValidateAccessToken(context.Context, *ValidateAccessTokenRequest) (*ValidateAccessTokenResponse, error)
 	GetAccount(context.Context, *GetAccountRequest) (*GetAccountResponse, error)
 	UpdateCredentials(context.Context, *UpdateCredentialsRequest) (*UpdateCredentialsResponse, error)
+	DeleteAccount(context.Context, *DeleteAccountRequest) (*DeleteAccountResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -148,6 +161,9 @@ func (UnimplementedAuthServiceServer) GetAccount(context.Context, *GetAccountReq
 }
 func (UnimplementedAuthServiceServer) UpdateCredentials(context.Context, *UpdateCredentialsRequest) (*UpdateCredentialsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateCredentials not implemented")
+}
+func (UnimplementedAuthServiceServer) DeleteAccount(context.Context, *DeleteAccountRequest) (*DeleteAccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAccount not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -278,6 +294,24 @@ func _AuthService_UpdateCredentials_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_DeleteAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).DeleteAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_DeleteAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).DeleteAccount(ctx, req.(*DeleteAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -308,6 +342,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateCredentials",
 			Handler:    _AuthService_UpdateCredentials_Handler,
+		},
+		{
+			MethodName: "DeleteAccount",
+			Handler:    _AuthService_DeleteAccount_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

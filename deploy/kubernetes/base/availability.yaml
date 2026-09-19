@@ -33,6 +33,33 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
+  name: subscriptions-outbox
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: subscriptions-outbox}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: posts-outbox
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: posts-outbox}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: profile-outbox
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: profile-outbox}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
   name: auth
 spec:
   minAvailable: 2

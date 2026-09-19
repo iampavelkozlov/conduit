@@ -119,6 +119,129 @@ func (mr *MockrepositoryMockRecorder) ListCommentsByArticleID(arg0, arg1 any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCommentsByArticleID", reflect.TypeOf((*Mockrepository)(nil).ListCommentsByArticleID), arg0, arg1)
 }
 
+// MockcommentRepository is a mock of commentRepository interface.
+type MockcommentRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockcommentRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockcommentRepositoryMockRecorder is the mock recorder for MockcommentRepository.
+type MockcommentRepositoryMockRecorder struct {
+	mock *MockcommentRepository
+}
+
+// NewMockcommentRepository creates a new mock instance.
+func NewMockcommentRepository(ctrl *gomock.Controller) *MockcommentRepository {
+	mock := &MockcommentRepository{ctrl: ctrl}
+	mock.recorder = &MockcommentRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockcommentRepository) EXPECT() *MockcommentRepositoryMockRecorder {
+	return m.recorder
+}
+
+// CreateComment mocks base method.
+func (m *MockcommentRepository) CreateComment(arg0 context.Context, arg1 postgres.CreateCommentParams) (postgres.CreateCommentRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateComment", arg0, arg1)
+	ret0, _ := ret[0].(postgres.CreateCommentRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateComment indicates an expected call of CreateComment.
+func (mr *MockcommentRepositoryMockRecorder) CreateComment(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateComment", reflect.TypeOf((*MockcommentRepository)(nil).CreateComment), arg0, arg1)
+}
+
+// DeleteCommentByIDAndArticleIDAndAuthorID mocks base method.
+func (m *MockcommentRepository) DeleteCommentByIDAndArticleIDAndAuthorID(arg0 context.Context, arg1 postgres.DeleteCommentByIDAndArticleIDAndAuthorIDParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCommentByIDAndArticleIDAndAuthorID", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteCommentByIDAndArticleIDAndAuthorID indicates an expected call of DeleteCommentByIDAndArticleIDAndAuthorID.
+func (mr *MockcommentRepositoryMockRecorder) DeleteCommentByIDAndArticleIDAndAuthorID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCommentByIDAndArticleIDAndAuthorID", reflect.TypeOf((*MockcommentRepository)(nil).DeleteCommentByIDAndArticleIDAndAuthorID), arg0, arg1)
+}
+
+// GetCommentAuthorIDByIDAndArticleID mocks base method.
+func (m *MockcommentRepository) GetCommentAuthorIDByIDAndArticleID(arg0 context.Context, arg1 postgres.GetCommentAuthorIDByIDAndArticleIDParams) (pgtype.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommentAuthorIDByIDAndArticleID", arg0, arg1)
+	ret0, _ := ret[0].(pgtype.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCommentAuthorIDByIDAndArticleID indicates an expected call of GetCommentAuthorIDByIDAndArticleID.
+func (mr *MockcommentRepositoryMockRecorder) GetCommentAuthorIDByIDAndArticleID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommentAuthorIDByIDAndArticleID", reflect.TypeOf((*MockcommentRepository)(nil).GetCommentAuthorIDByIDAndArticleID), arg0, arg1)
+}
+
+// ListCommentsByArticleID mocks base method.
+func (m *MockcommentRepository) ListCommentsByArticleID(arg0 context.Context, arg1 pgtype.UUID) ([]postgres.ListCommentsByArticleIDRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListCommentsByArticleID", arg0, arg1)
+	ret0, _ := ret[0].([]postgres.ListCommentsByArticleIDRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListCommentsByArticleID indicates an expected call of ListCommentsByArticleID.
+func (mr *MockcommentRepositoryMockRecorder) ListCommentsByArticleID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCommentsByArticleID", reflect.TypeOf((*MockcommentRepository)(nil).ListCommentsByArticleID), arg0, arg1)
+}
+
+// MockProfileReader is a mock of ProfileReader interface.
+type MockProfileReader struct {
+	ctrl     *gomock.Controller
+	recorder *MockProfileReaderMockRecorder
+	isgomock struct{}
+}
+
+// MockProfileReaderMockRecorder is the mock recorder for MockProfileReader.
+type MockProfileReaderMockRecorder struct {
+	mock *MockProfileReader
+}
+
+// NewMockProfileReader creates a new mock instance.
+func NewMockProfileReader(ctrl *gomock.Controller) *MockProfileReader {
+	mock := &MockProfileReader{ctrl: ctrl}
+	mock.recorder = &MockProfileReaderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockProfileReader) EXPECT() *MockProfileReaderMockRecorder {
+	return m.recorder
+}
+
+// ProfilesByIDs mocks base method.
+func (m *MockProfileReader) ProfilesByIDs(arg0 context.Context, arg1 []uuid.UUID) (map[uuid.UUID]models.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProfilesByIDs", arg0, arg1)
+	ret0, _ := ret[0].(map[uuid.UUID]models.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ProfilesByIDs indicates an expected call of ProfilesByIDs.
+func (mr *MockProfileReaderMockRecorder) ProfilesByIDs(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProfilesByIDs", reflect.TypeOf((*MockProfileReader)(nil).ProfilesByIDs), arg0, arg1)
+}
+
 // MockUserService is a mock of UserService interface.
 type MockUserService struct {
 	ctrl     *gomock.Controller
@@ -156,4 +279,43 @@ func (m *MockUserService) ProfilesByIDs(arg0 context.Context, arg1 []uuid.UUID) 
 func (mr *MockUserServiceMockRecorder) ProfilesByIDs(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProfilesByIDs", reflect.TypeOf((*MockUserService)(nil).ProfilesByIDs), arg0, arg1)
+}
+
+// MockArticleResolver is a mock of ArticleResolver interface.
+type MockArticleResolver struct {
+	ctrl     *gomock.Controller
+	recorder *MockArticleResolverMockRecorder
+	isgomock struct{}
+}
+
+// MockArticleResolverMockRecorder is the mock recorder for MockArticleResolver.
+type MockArticleResolverMockRecorder struct {
+	mock *MockArticleResolver
+}
+
+// NewMockArticleResolver creates a new mock instance.
+func NewMockArticleResolver(ctrl *gomock.Controller) *MockArticleResolver {
+	mock := &MockArticleResolver{ctrl: ctrl}
+	mock.recorder = &MockArticleResolverMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockArticleResolver) EXPECT() *MockArticleResolverMockRecorder {
+	return m.recorder
+}
+
+// ResolveArticleID mocks base method.
+func (m *MockArticleResolver) ResolveArticleID(arg0 context.Context, arg1 string) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveArticleID", arg0, arg1)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveArticleID indicates an expected call of ResolveArticleID.
+func (mr *MockArticleResolverMockRecorder) ResolveArticleID(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveArticleID", reflect.TypeOf((*MockArticleResolver)(nil).ResolveArticleID), arg0, arg1)
 }

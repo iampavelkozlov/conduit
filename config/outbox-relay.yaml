@@ -1,0 +1,22 @@
+db:
+  dsn: "postgres://conduit_subscriptions:subscriptions@localhost:5432/conduit_subscriptions?sslmode=disable"
+
+logger:
+  level: "info"
+  format: "text"
+
+kafka:
+  brokers: ["localhost:29092"]
+  client_id: "subscriptions-outbox"
+  username: ""
+  password: ""
+  tls: false
+
+relay:
+  source: "subscriptions"
+  batch_size: 100
+  poll_interval: "500ms"
+  lock_timeout: "30s"
+  retry_delay: "1s"
+  max_retry_delay: "1m"
+  metrics_address: ":9100"

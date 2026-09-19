@@ -18,7 +18,8 @@ func TestConfigValidate(t *testing.T) {
 			AccessTokenTTL:  15 * time.Minute,
 			RefreshTokenTTL: time.Hour,
 		},
-		HTTP: HTTPConfig{AllowedOrigins: []string{"https://example.com"}},
+		HTTP:     HTTPConfig{AllowedOrigins: []string{"https://example.com"}},
+		Services: RemoteServicesConfig{Mode: "local", Timeout: time.Second},
 	}
 	require.NoError(t, valid.Validate())
 
@@ -29,6 +30,9 @@ func TestConfigValidate(t *testing.T) {
 		"invalid access TTL":    func(c *Config) { c.Auth.AccessTokenTTL = 0 },
 		"invalid refresh TTL":   func(c *Config) { c.Auth.RefreshTokenTTL = c.Auth.AccessTokenTTL },
 		"empty allowed origins": func(c *Config) { c.HTTP.AllowedOrigins = nil },
+		"invalid services mode": func(c *Config) { c.Services.Mode = "remote" },
+		"invalid RPC timeout":   func(c *Config) { c.Services.Timeout = 0 },
+		"missing remote target": func(c *Config) { c.Services.Mode = "grpc" },
 	}
 
 	for name, mutate := range tests {
@@ -38,6 +42,21 @@ func TestConfigValidate(t *testing.T) {
 			require.Error(t, cfg.Validate())
 		})
 	}
+}
+
+func TestConfigValidateGRPCMode(t *testing.T) {
+	cfg := Config{
+		DB:   DBConfig{DSN: "postgres://localhost/conduit"},
+		Auth: AuthConfig{JWTSecret: "a-secret-with-at-least-32-bytes-long", PasswordPepper: "a-long-password-pepper", AccessTokenTTL: time.Minute, RefreshTokenTTL: time.Hour},
+		HTTP: HTTPConfig{AllowedOrigins: []string{"*"}},
+		Services: RemoteServicesConfig{
+			Mode: "grpc", Timeout: time.Second,
+			Auth: AuthGRPCClientConfig{Target: "auth:9001"}, Profile: ProfileGRPCClientConfig{Target: "profile:9002"},
+			Posts: PostsGRPCClientConfig{Target: "posts:9003"}, Comments: CommentsGRPCClientConfig{Target: "comments:9005"},
+			Subscriptions: SubscriptionsGRPCClientConfig{Target: "subscriptions:9004"},
+		},
+	}
+	require.NoError(t, cfg.Validate())
 }
 
 func TestLoad(t *testing.T) {

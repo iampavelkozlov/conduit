@@ -8,7 +8,6 @@ import (
 	"conduit/internal/config"
 	api "conduit/internal/gen/http"
 	"conduit/internal/metrics"
-	"conduit/internal/service"
 	httptransport "conduit/internal/transport/http"
 	transportmiddleware "conduit/internal/transport/middleware"
 
@@ -28,7 +27,7 @@ func provideHTTPHandler(
 	httpMetrics *metrics.HTTP,
 	panicReporter metrics.PanicReporter,
 	server api.StrictServerInterface,
-	svc *service.Service,
+	svc httptransport.ApplicationService,
 	registry *metrics.Registry,
 ) (http.Handler, error) {
 	spec, err := api.GetSwagger()

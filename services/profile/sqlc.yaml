@@ -1,0 +1,14 @@
+version: "2"
+sql:
+  - schema:
+      - "migrations/*.sql"
+    queries:
+      - "queries/*.sql"
+    engine: "postgresql"
+    gen:
+      go:
+        out: "../../internal/gen/profile/postgres"
+        package: "postgres"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false

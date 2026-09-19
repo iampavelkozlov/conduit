@@ -34,6 +34,33 @@ func (w *QuerierMetrics) AttachTagsToArticle(ctx context.Context, arg _sourcePos
 	return w.base.AttachTagsToArticle(ctx, arg)
 }
 
+// ClaimInboxEvent implements _sourcePostgres.Querier.
+func (w *QuerierMetrics) ClaimInboxEvent(ctx context.Context, arg _sourcePostgres.ClaimInboxEventParams) (b1 bool, err error) {
+	started := time.Now()
+	defer func() {
+		w.metrics.observe("ClaimInboxEvent", started, err)
+	}()
+	return w.base.ClaimInboxEvent(ctx, arg)
+}
+
+// ClaimOutboxEvents implements _sourcePostgres.Querier.
+func (w *QuerierMetrics) ClaimOutboxEvents(ctx context.Context, arg _sourcePostgres.ClaimOutboxEventsParams) (ca1 []_sourcePostgres.ClaimOutboxEventsRow, err error) {
+	started := time.Now()
+	defer func() {
+		w.metrics.observe("ClaimOutboxEvents", started, err)
+	}()
+	return w.base.ClaimOutboxEvents(ctx, arg)
+}
+
+// CompleteInboxEvent implements _sourcePostgres.Querier.
+func (w *QuerierMetrics) CompleteInboxEvent(ctx context.Context, arg _sourcePostgres.CompleteInboxEventParams) (i1 int64, err error) {
+	started := time.Now()
+	defer func() {
+		w.metrics.observe("CompleteInboxEvent", started, err)
+	}()
+	return w.base.CompleteInboxEvent(ctx, arg)
+}
+
 // CountArticles implements _sourcePostgres.Querier.
 func (w *QuerierMetrics) CountArticles(ctx context.Context, arg _sourcePostgres.CountArticlesParams) (i1 int64, err error) {
 	started := time.Now()
@@ -113,6 +140,15 @@ func (w *QuerierMetrics) DeleteCommentByIDAndArticleIDAndAuthorID(ctx context.Co
 		w.metrics.observe("DeleteCommentByIDAndArticleIDAndAuthorID", started, err)
 	}()
 	return w.base.DeleteCommentByIDAndArticleIDAndAuthorID(ctx, arg)
+}
+
+// DeleteUser implements _sourcePostgres.Querier.
+func (w *QuerierMetrics) DeleteUser(ctx context.Context, id pgtype.UUID) (i1 int64, err error) {
+	started := time.Now()
+	defer func() {
+		w.metrics.observe("DeleteUser", started, err)
+	}()
+	return w.base.DeleteUser(ctx, id)
 }
 
 // FavoriteArticle implements _sourcePostgres.Querier.
@@ -320,6 +356,33 @@ func (w *QuerierMetrics) ListTagsByIDs(ctx context.Context, ids []pgtype.UUID) (
 		w.metrics.observe("ListTagsByIDs", started, err)
 	}()
 	return w.base.ListTagsByIDs(ctx, ids)
+}
+
+// MarkOutboxPublished implements _sourcePostgres.Querier.
+func (w *QuerierMetrics) MarkOutboxPublished(ctx context.Context, id pgtype.UUID) (i1 int64, err error) {
+	started := time.Now()
+	defer func() {
+		w.metrics.observe("MarkOutboxPublished", started, err)
+	}()
+	return w.base.MarkOutboxPublished(ctx, id)
+}
+
+// ReleaseInboxEvent implements _sourcePostgres.Querier.
+func (w *QuerierMetrics) ReleaseInboxEvent(ctx context.Context, arg _sourcePostgres.ReleaseInboxEventParams) (i1 int64, err error) {
+	started := time.Now()
+	defer func() {
+		w.metrics.observe("ReleaseInboxEvent", started, err)
+	}()
+	return w.base.ReleaseInboxEvent(ctx, arg)
+}
+
+// ReleaseOutboxEvent implements _sourcePostgres.Querier.
+func (w *QuerierMetrics) ReleaseOutboxEvent(ctx context.Context, arg _sourcePostgres.ReleaseOutboxEventParams) (i1 int64, err error) {
+	started := time.Now()
+	defer func() {
+		w.metrics.observe("ReleaseOutboxEvent", started, err)
+	}()
+	return w.base.ReleaseOutboxEvent(ctx, arg)
 }
 
 // RotateSession implements _sourcePostgres.Querier.

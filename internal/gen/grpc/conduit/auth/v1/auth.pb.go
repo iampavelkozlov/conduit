@@ -782,6 +782,102 @@ func (x *UpdateCredentialsResponse) GetAccount() *Account {
 	return nil
 }
 
+type DeleteAccountRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DeleteAccountRequest) Reset() {
+	*x = DeleteAccountRequest{}
+	mi := &file_conduit_auth_v1_auth_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAccountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAccountRequest) ProtoMessage() {}
+
+func (x *DeleteAccountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_conduit_auth_v1_auth_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAccountRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAccountRequest) Descriptor() ([]byte, []int) {
+	return file_conduit_auth_v1_auth_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *DeleteAccountRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *DeleteAccountRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type DeleteAccountResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Deleted       bool                   `protobuf:"varint,1,opt,name=deleted,proto3" json:"deleted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAccountResponse) Reset() {
+	*x = DeleteAccountResponse{}
+	mi := &file_conduit_auth_v1_auth_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAccountResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAccountResponse) ProtoMessage() {}
+
+func (x *DeleteAccountResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_conduit_auth_v1_auth_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAccountResponse.ProtoReflect.Descriptor instead.
+func (*DeleteAccountResponse) Descriptor() ([]byte, []int) {
+	return file_conduit_auth_v1_auth_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *DeleteAccountResponse) GetDeleted() bool {
+	if x != nil {
+		return x.Deleted
+	}
+	return false
+}
+
 var File_conduit_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_conduit_auth_v1_auth_proto_rawDesc = "" +
@@ -835,7 +931,12 @@ const file_conduit_auth_v1_auth_proto_rawDesc = "" +
 	"\x06_emailB\v\n" +
 	"\t_password\"O\n" +
 	"\x19UpdateCredentialsResponse\x122\n" +
-	"\aaccount\x18\x01 \x01(\v2\x18.conduit.auth.v1.AccountR\aaccount2\xa9\x04\n" +
+	"\aaccount\x18\x01 \x01(\v2\x18.conduit.auth.v1.AccountR\aaccount\"X\n" +
+	"\x14DeleteAccountRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12'\n" +
+	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\"1\n" +
+	"\x15DeleteAccountResponse\x12\x18\n" +
+	"\adeleted\x18\x01 \x01(\bR\adeleted2\x89\x05\n" +
 	"\vAuthService\x12O\n" +
 	"\bRegister\x12 .conduit.auth.v1.RegisterRequest\x1a!.conduit.auth.v1.RegisterResponse\x12F\n" +
 	"\x05Login\x12\x1d.conduit.auth.v1.LoginRequest\x1a\x1e.conduit.auth.v1.LoginResponse\x12L\n" +
@@ -843,7 +944,8 @@ const file_conduit_auth_v1_auth_proto_rawDesc = "" +
 	"\x13ValidateAccessToken\x12+.conduit.auth.v1.ValidateAccessTokenRequest\x1a,.conduit.auth.v1.ValidateAccessTokenResponse\x12U\n" +
 	"\n" +
 	"GetAccount\x12\".conduit.auth.v1.GetAccountRequest\x1a#.conduit.auth.v1.GetAccountResponse\x12j\n" +
-	"\x11UpdateCredentials\x12).conduit.auth.v1.UpdateCredentialsRequest\x1a*.conduit.auth.v1.UpdateCredentialsResponseB2Z0conduit/internal/gen/grpc/conduit/auth/v1;authv1b\x06proto3"
+	"\x11UpdateCredentials\x12).conduit.auth.v1.UpdateCredentialsRequest\x1a*.conduit.auth.v1.UpdateCredentialsResponse\x12^\n" +
+	"\rDeleteAccount\x12%.conduit.auth.v1.DeleteAccountRequest\x1a&.conduit.auth.v1.DeleteAccountResponseB2Z0conduit/internal/gen/grpc/conduit/auth/v1;authv1b\x06proto3"
 
 var (
 	file_conduit_auth_v1_auth_proto_rawDescOnce sync.Once
@@ -857,7 +959,7 @@ func file_conduit_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_conduit_auth_v1_auth_proto_rawDescData
 }
 
-var file_conduit_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_conduit_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_conduit_auth_v1_auth_proto_goTypes = []any{
 	(*Account)(nil),                     // 0: conduit.auth.v1.Account
 	(*TokenPair)(nil),                   // 1: conduit.auth.v1.TokenPair
@@ -873,18 +975,20 @@ var file_conduit_auth_v1_auth_proto_goTypes = []any{
 	(*GetAccountResponse)(nil),          // 11: conduit.auth.v1.GetAccountResponse
 	(*UpdateCredentialsRequest)(nil),    // 12: conduit.auth.v1.UpdateCredentialsRequest
 	(*UpdateCredentialsResponse)(nil),   // 13: conduit.auth.v1.UpdateCredentialsResponse
-	(*timestamppb.Timestamp)(nil),       // 14: google.protobuf.Timestamp
+	(*DeleteAccountRequest)(nil),        // 14: conduit.auth.v1.DeleteAccountRequest
+	(*DeleteAccountResponse)(nil),       // 15: conduit.auth.v1.DeleteAccountResponse
+	(*timestamppb.Timestamp)(nil),       // 16: google.protobuf.Timestamp
 }
 var file_conduit_auth_v1_auth_proto_depIdxs = []int32{
-	14, // 0: conduit.auth.v1.TokenPair.access_expires_at:type_name -> google.protobuf.Timestamp
-	14, // 1: conduit.auth.v1.TokenPair.refresh_expires_at:type_name -> google.protobuf.Timestamp
+	16, // 0: conduit.auth.v1.TokenPair.access_expires_at:type_name -> google.protobuf.Timestamp
+	16, // 1: conduit.auth.v1.TokenPair.refresh_expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: conduit.auth.v1.RegisterResponse.account:type_name -> conduit.auth.v1.Account
 	1,  // 3: conduit.auth.v1.RegisterResponse.tokens:type_name -> conduit.auth.v1.TokenPair
 	0,  // 4: conduit.auth.v1.LoginResponse.account:type_name -> conduit.auth.v1.Account
 	1,  // 5: conduit.auth.v1.LoginResponse.tokens:type_name -> conduit.auth.v1.TokenPair
 	0,  // 6: conduit.auth.v1.RefreshResponse.account:type_name -> conduit.auth.v1.Account
 	1,  // 7: conduit.auth.v1.RefreshResponse.tokens:type_name -> conduit.auth.v1.TokenPair
-	14, // 8: conduit.auth.v1.ValidateAccessTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
+	16, // 8: conduit.auth.v1.ValidateAccessTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 9: conduit.auth.v1.GetAccountResponse.account:type_name -> conduit.auth.v1.Account
 	0,  // 10: conduit.auth.v1.UpdateCredentialsResponse.account:type_name -> conduit.auth.v1.Account
 	2,  // 11: conduit.auth.v1.AuthService.Register:input_type -> conduit.auth.v1.RegisterRequest
@@ -893,14 +997,16 @@ var file_conduit_auth_v1_auth_proto_depIdxs = []int32{
 	8,  // 14: conduit.auth.v1.AuthService.ValidateAccessToken:input_type -> conduit.auth.v1.ValidateAccessTokenRequest
 	10, // 15: conduit.auth.v1.AuthService.GetAccount:input_type -> conduit.auth.v1.GetAccountRequest
 	12, // 16: conduit.auth.v1.AuthService.UpdateCredentials:input_type -> conduit.auth.v1.UpdateCredentialsRequest
-	3,  // 17: conduit.auth.v1.AuthService.Register:output_type -> conduit.auth.v1.RegisterResponse
-	5,  // 18: conduit.auth.v1.AuthService.Login:output_type -> conduit.auth.v1.LoginResponse
-	7,  // 19: conduit.auth.v1.AuthService.Refresh:output_type -> conduit.auth.v1.RefreshResponse
-	9,  // 20: conduit.auth.v1.AuthService.ValidateAccessToken:output_type -> conduit.auth.v1.ValidateAccessTokenResponse
-	11, // 21: conduit.auth.v1.AuthService.GetAccount:output_type -> conduit.auth.v1.GetAccountResponse
-	13, // 22: conduit.auth.v1.AuthService.UpdateCredentials:output_type -> conduit.auth.v1.UpdateCredentialsResponse
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
+	14, // 17: conduit.auth.v1.AuthService.DeleteAccount:input_type -> conduit.auth.v1.DeleteAccountRequest
+	3,  // 18: conduit.auth.v1.AuthService.Register:output_type -> conduit.auth.v1.RegisterResponse
+	5,  // 19: conduit.auth.v1.AuthService.Login:output_type -> conduit.auth.v1.LoginResponse
+	7,  // 20: conduit.auth.v1.AuthService.Refresh:output_type -> conduit.auth.v1.RefreshResponse
+	9,  // 21: conduit.auth.v1.AuthService.ValidateAccessToken:output_type -> conduit.auth.v1.ValidateAccessTokenResponse
+	11, // 22: conduit.auth.v1.AuthService.GetAccount:output_type -> conduit.auth.v1.GetAccountResponse
+	13, // 23: conduit.auth.v1.AuthService.UpdateCredentials:output_type -> conduit.auth.v1.UpdateCredentialsResponse
+	15, // 24: conduit.auth.v1.AuthService.DeleteAccount:output_type -> conduit.auth.v1.DeleteAccountResponse
+	18, // [18:25] is the sub-list for method output_type
+	11, // [11:18] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
 	11, // [11:11] is the sub-list for extension extendee
 	0,  // [0:11] is the sub-list for field type_name
@@ -918,7 +1024,7 @@ func file_conduit_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_conduit_auth_v1_auth_proto_rawDesc), len(file_conduit_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
