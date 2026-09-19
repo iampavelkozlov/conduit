@@ -1,0 +1,120 @@
+# These jobs are intentionally not part of the base. Service-specific jobs are
+# suspended until their images contain /app/goose and /app/migrations/<service>.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gateway-migrate
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations, postgres, "$(DB_DSN)", up]
+          env:
+            - name: DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-migrate
+spec:
+  suspend: true
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/auth, postgres, "$(AUTH_DB_DSN)", up]
+          env:
+            - name: AUTH_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: AUTH_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: profile-migrate
+spec:
+  suspend: true
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/profile, postgres, "$(PROFILE_DB_DSN)", up]
+          env:
+            - name: PROFILE_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: PROFILE_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: posts-migrate
+spec:
+  suspend: true
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/posts, postgres, "$(POSTS_DB_DSN)", up]
+          env:
+            - name: POSTS_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: POSTS_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: comments-migrate
+spec:
+  suspend: true
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/comments, postgres, "$(COMMENTS_DB_DSN)", up]
+          env:
+            - name: COMMENTS_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: COMMENTS_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: subscriptions-migrate
+spec:
+  suspend: true
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/subscriptions, postgres, "$(SUBSCRIPTIONS_DB_DSN)", up]
+          env:
+            - name: SUBSCRIPTIONS_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: SUBSCRIPTIONS_DB_DSN}}

@@ -39,18 +39,23 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 	querier := provideQueries(pool, repository)
 	v2 := provideQueryDecorator(repository)
 	transactions := provideTransactions(pool, v2)
-	followService := provideFollowService(querier, logger)
-	userService := provideUserService(querier, followService, configConfig, logger)
+	dependency, cleanup2, err := provideFollowService(querier, configConfig, logger)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	userService := provideUserService(querier, dependency, configConfig, logger)
 	tagService := provideTagService(querier, logger)
 	articletagService := provideArticleTagService(querier, logger)
 	favoriteService := provideFavoriteService(querier, logger)
-	articleService := provideArticleService(querier, transactions, userService, tagService, articletagService, favoriteService, followService, logger)
+	articleService := provideArticleService(querier, transactions, userService, tagService, articletagService, favoriteService, dependency, logger)
 	authService := provideAuthService(querier, transactions, configConfig, logger)
 	commentService := provideCommentService(querier, userService, logger)
 	serviceService := service.New(articleService, authService, commentService, tagService, userService)
 	authMiddleware := middleware.NewAuthMiddleware(serviceService)
 	metricsHTTP, err := provideHTTPMetrics(v)
 	if err != nil {
+		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
@@ -58,11 +63,13 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 	strictServerInterface := http.NewServer(serviceService)
 	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, serviceService, v)
 	if err != nil {
+		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
 	mainApplication := newApplication(logger, handler)
 	return mainApplication, func() {
+		cleanup2()
 		cleanup()
 	}, nil
 }

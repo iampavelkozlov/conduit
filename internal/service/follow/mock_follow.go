@@ -14,9 +14,107 @@ import (
 	context "context"
 	reflect "reflect"
 
+	uuid "github.com/google/uuid"
 	pgtype "github.com/jackc/pgx/v5/pgtype"
 	gomock "go.uber.org/mock/gomock"
 )
+
+// MockDependency is a mock of Dependency interface.
+type MockDependency struct {
+	ctrl     *gomock.Controller
+	recorder *MockDependencyMockRecorder
+	isgomock struct{}
+}
+
+// MockDependencyMockRecorder is the mock recorder for MockDependency.
+type MockDependencyMockRecorder struct {
+	mock *MockDependency
+}
+
+// NewMockDependency creates a new mock instance.
+func NewMockDependency(ctrl *gomock.Controller) *MockDependency {
+	mock := &MockDependency{ctrl: ctrl}
+	mock.recorder = &MockDependencyMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockDependency) EXPECT() *MockDependencyMockRecorder {
+	return m.recorder
+}
+
+// Follow mocks base method.
+func (m *MockDependency) Follow(arg0 context.Context, arg1, arg2 uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Follow", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Follow indicates an expected call of Follow.
+func (mr *MockDependencyMockRecorder) Follow(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Follow", reflect.TypeOf((*MockDependency)(nil).Follow), arg0, arg1, arg2)
+}
+
+// FolloweeIDs mocks base method.
+func (m *MockDependency) FolloweeIDs(arg0 context.Context, arg1 uuid.UUID) ([]uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FolloweeIDs", arg0, arg1)
+	ret0, _ := ret[0].([]uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FolloweeIDs indicates an expected call of FolloweeIDs.
+func (mr *MockDependencyMockRecorder) FolloweeIDs(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FolloweeIDs", reflect.TypeOf((*MockDependency)(nil).FolloweeIDs), arg0, arg1)
+}
+
+// FollowingIDs mocks base method.
+func (m *MockDependency) FollowingIDs(arg0 context.Context, arg1 uuid.UUID, arg2 []uuid.UUID) (map[uuid.UUID]struct{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FollowingIDs", arg0, arg1, arg2)
+	ret0, _ := ret[0].(map[uuid.UUID]struct{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FollowingIDs indicates an expected call of FollowingIDs.
+func (mr *MockDependencyMockRecorder) FollowingIDs(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FollowingIDs", reflect.TypeOf((*MockDependency)(nil).FollowingIDs), arg0, arg1, arg2)
+}
+
+// IsFollowing mocks base method.
+func (m *MockDependency) IsFollowing(arg0 context.Context, arg1, arg2 uuid.UUID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsFollowing", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsFollowing indicates an expected call of IsFollowing.
+func (mr *MockDependencyMockRecorder) IsFollowing(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsFollowing", reflect.TypeOf((*MockDependency)(nil).IsFollowing), arg0, arg1, arg2)
+}
+
+// Unfollow mocks base method.
+func (m *MockDependency) Unfollow(arg0 context.Context, arg1, arg2 uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unfollow", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Unfollow indicates an expected call of Unfollow.
+func (mr *MockDependencyMockRecorder) Unfollow(arg0, arg1, arg2 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unfollow", reflect.TypeOf((*MockDependency)(nil).Unfollow), arg0, arg1, arg2)
+}
 
 // Mockrepository is a mock of repository interface.
 type Mockrepository struct {

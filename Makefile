@@ -13,12 +13,19 @@ GOOSE_VERSION := v3.28.0
 GOOSE := $(shell go env GOPATH)/bin/goose
 SQLC_VERSION := v1.30.0
 SQLC := $(shell go env GOPATH)/bin/sqlc
+BUF_VERSION := v1.72.0
+BUF := $(shell go env GOPATH)/bin/buf
+PROTOC_GEN_GO_VERSION := v1.36.11
+PROTOC_GEN_GO := $(shell go env GOPATH)/bin/protoc-gen-go
+PROTOC_GEN_GO_GRPC_VERSION := v1.6.2
+PROTOC_GEN_GO_GRPC := $(shell go env GOPATH)/bin/protoc-gen-go-grpc
+BUF_BREAKING_AGAINST ?= .git\#branch=main,subdir=proto
 MIGRATIONS_DIR := migrations
 DB_DSN ?= postgres://postgres:postgres@localhost:5432/conduit?sslmode=disable
 COVERAGE_PROFILE ?= coverage.out
 COVERAGE_BADGE ?= docs/coverage.svg
 
-.PHONY: oapi-codegen gen-http go-wrap goose-install migrate sqlc-install sqlc wire mocks wrap generate golangci-lint-install lint go-arch-lint-install arch-lint arch-graph go-test-coverage-install coverage badges quality
+.PHONY: oapi-codegen gen-http go-wrap goose-install migrate sqlc-install sqlc grpc-tools grpc-lint grpc-breaking gen-grpc wire mocks wrap generate golangci-lint-install lint go-arch-lint-install arch-lint arch-graph go-test-coverage-install coverage badges quality
 
 -include .env
 export
@@ -47,13 +54,31 @@ sqlc-install:
 sqlc: sqlc-install
 	$(SQLC) generate
 
+grpc-tools:
+	go install github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOC_GEN_GO_VERSION)
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@$(PROTOC_GEN_GO_GRPC_VERSION)
+
+grpc-lint: grpc-tools
+	$(BUF) lint
+
+grpc-breaking: grpc-tools
+	@if git ls-tree -r --name-only main -- proto | grep -q '\.proto$$'; then \
+		$(BUF) breaking --against '$(BUF_BREAKING_AGAINST)'; \
+	else \
+		echo "No protobuf baseline on main yet; breaking check skipped"; \
+	fi
+
+gen-grpc: grpc-lint
+	PATH="$(dir $(PROTOC_GEN_GO)):$(dir $(PROTOC_GEN_GO_GRPC)):$$PATH" $(BUF) generate
+
 wire:
 	go tool wire ./cmd/server
 
 mocks:
 	go generate ./internal/service/... ./internal/transport/http ./internal/transport/middleware
 
-generate: gen-http sqlc mocks wrap wire
+generate: gen-http gen-grpc sqlc mocks wrap wire
 
 golangci-lint-install:
 	@if ! $(GOLANGCI_LINT) version 2>/dev/null | grep -q "$(GOLANGCI_LINT_VERSION_NUMBER)"; then \

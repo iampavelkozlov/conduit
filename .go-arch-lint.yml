@@ -27,6 +27,12 @@ vendors:
   database: { in: github.com/jackc/pgx/** }
   di: { in: github.com/google/wire }
   observability: { in: github.com/prometheus/client_golang/** }
+  grpc:
+    in:
+      - google.golang.org/grpc
+      - google.golang.org/grpc/**
+      - google.golang.org/genproto/**
+  protobuf: { in: google.golang.org/protobuf/** }
   utilities:
     in:
       - github.com/google/uuid
@@ -43,6 +49,7 @@ components:
   logging: { in: internal/logger }
   metrics: { in: internal/metrics }
   api: { in: internal/gen/http }
+  rpcapi: { in: internal/gen/grpc/** }
   frontend: { in: frontend }
   models: { in: internal/models }
   repository:
@@ -62,12 +69,15 @@ deps:
       - logging
       - metrics
       - repository
+      - rpcapi
       - service
       - transport
     canUse:
       - database
       - di
       - observability
+      - grpc
+      - utilities
       - web
   configuration:
     canUse:
@@ -85,6 +95,12 @@ deps:
   api:
     canUse:
       - web
+  rpcapi:
+    mayDependOn:
+      - rpcapi
+    canUse:
+      - grpc
+      - protobuf
   frontend:
     mayDependOn:
       - api
@@ -112,9 +128,12 @@ deps:
     mayDependOn:
       - api
       - models
+      - rpcapi
       - service
+      - transport
     canUse:
       - database
+      - grpc
       - observability
       - utilities
       - web

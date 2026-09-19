@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"conduit/internal/config"
+	subscriptionsv1 "conduit/internal/gen/grpc/conduit/subscriptions/v1"
 	"conduit/internal/gen/postgres"
 	"conduit/internal/logger"
 	"conduit/internal/metrics"
@@ -19,9 +20,12 @@ import (
 	"conduit/internal/service/tag"
 	"conduit/internal/service/user"
 	pgstorage "conduit/internal/storage/postgres"
+	subscriptionsgrpc "conduit/internal/transport/grpc/subscriptions"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type application struct {
@@ -93,7 +97,7 @@ func provideArticleService(
 	tags *tag.Service,
 	articleTags *articletag.Service,
 	favorites *favorite.Service,
-	follows *follow.Service,
+	follows follow.Dependency,
 	logger *slog.Logger,
 ) *article.Service {
 	return article.New(repository, transactions, users, tags, articleTags, favorites, follows, logger)
@@ -103,8 +107,18 @@ func provideAuthService(queries postgres.Querier, transactions *transaction.Tran
 	return auth.New(queries, transactions, cfg.Auth, logger)
 }
 
-func provideFollowService(queries postgres.Querier, logger *slog.Logger) *follow.Service {
-	return follow.New(queries, logger)
+func provideFollowService(queries postgres.Querier, cfg *config.Config, logger *slog.Logger) (follow.Dependency, func(), error) {
+	if cfg.Services.Subscriptions.Target == "" {
+		return follow.New(queries, logger), func() {}, nil
+	}
+	connection, err := grpc.NewClient(
+		cfg.Services.Subscriptions.Target,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	return subscriptionsgrpc.NewClient(subscriptionsv1.NewSubscriptionsServiceClient(connection)), func() { _ = connection.Close() }, nil
 }
 
 func provideFavoriteService(queries postgres.Querier, logger *slog.Logger) *favorite.Service {
@@ -115,7 +129,7 @@ func provideArticleTagService(queries postgres.Querier, logger *slog.Logger) *ar
 	return articletag.New(queries, logger)
 }
 
-func provideUserService(queries postgres.Querier, follows *follow.Service, cfg *config.Config, logger *slog.Logger) *user.Service {
+func provideUserService(queries postgres.Querier, follows follow.Dependency, cfg *config.Config, logger *slog.Logger) *user.Service {
 	return user.New(queries, follows, auth.NewPasswordManager(cfg.Auth.PasswordPepper), logger)
 }
 

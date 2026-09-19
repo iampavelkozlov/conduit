@@ -14,3 +14,9 @@ auth:
   password_pepper: "development-change-me-pepper"
   access_token_ttl: "15m"
   refresh_token_ttl: "720h"
+
+services:
+  # Leave empty for the in-process fallback. Set to dns:///localhost:9004 to
+  # route follow operations through the extracted subscriptions service.
+  subscriptions:
+    target: ""

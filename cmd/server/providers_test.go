@@ -52,7 +52,9 @@ func TestSimpleProviders(t *testing.T) {
 	require.NotNil(t, provideQueries(nil, repositoryMetrics))
 	require.NotNil(t, provideQueryDecorator(repositoryMetrics)(querier))
 	transactions := provideTransactions(nil, func(value postgres.Querier) postgres.Querier { return value })
-	followService := provideFollowService(querier, logger)
+	followService, closeFollows, err := provideFollowService(querier, cfg, logger)
+	require.NoError(t, err)
+	t.Cleanup(closeFollows)
 	favoriteService := provideFavoriteService(querier, logger)
 	articleTagService := provideArticleTagService(querier, logger)
 	userService := provideUserService(querier, followService, cfg, logger)
@@ -69,6 +71,18 @@ func TestSimpleProviders(t *testing.T) {
 	require.NotPanics(t, func() {
 		reporter(httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/panic", nil), "/panic", "boom", []byte("stack"))
 	})
+}
+
+func TestProvideRemoteFollowService(t *testing.T) {
+	t.Parallel()
+	cfg := &config.Config{Services: config.RemoteServicesConfig{
+		Subscriptions: config.GRPCClientConfig{Target: "dns:///localhost:9004"},
+	}}
+	dependency, cleanup, err := provideFollowService(providerQuerierStub{}, cfg, slog.Default())
+	require.NoError(t, err)
+	require.NotNil(t, dependency)
+	require.NotNil(t, cleanup)
+	cleanup()
 }
 
 func TestProvideDatabaseRejectsInvalidDSN(t *testing.T) {

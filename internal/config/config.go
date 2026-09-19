@@ -10,10 +10,19 @@ import (
 )
 
 type Config struct {
-	DB     DBConfig     `yaml:"db"`
-	Logger LoggerConfig `yaml:"logger"`
-	Auth   AuthConfig   `yaml:"auth"`
-	HTTP   HTTPConfig   `yaml:"http"`
+	DB       DBConfig             `yaml:"db"`
+	Logger   LoggerConfig         `yaml:"logger"`
+	Auth     AuthConfig           `yaml:"auth"`
+	HTTP     HTTPConfig           `yaml:"http"`
+	Services RemoteServicesConfig `yaml:"services"`
+}
+
+type RemoteServicesConfig struct {
+	Subscriptions GRPCClientConfig `yaml:"subscriptions"`
+}
+
+type GRPCClientConfig struct {
+	Target string `yaml:"target" env:"SUBSCRIPTIONS_GRPC_TARGET"`
 }
 
 type DBConfig struct {
