@@ -108,7 +108,7 @@ func initializeCommentService(ctx context.Context, cfg *config.CommentsConfig, a
 		_ = postsConn.Close()
 		pool.Close()
 	}
-	return comment.NewWithResolver(postgres.New(pool), profiles, articles, appLogger), cleanup, nil
+	return comment.New(postgres.New(pool), profiles, articles, appLogger), cleanup, nil
 }
 
 func loadConfig(args []string) (*config.CommentsConfig, error) {

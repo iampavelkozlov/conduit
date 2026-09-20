@@ -1,10 +1,9 @@
 # Conduit API
 
 A production-oriented Go implementation of the
-[RealWorld](https://github.com/realworld-apps/realworld) API. The repository
-contains both the original monolith and a strangler-style microservice runtime.
-Both expose the same immutable HTTP contract, so the existing frontend keeps
-using `http://localhost:8000/api` without knowing which runtime is behind it.
+[RealWorld](https://github.com/realworld-apps/realworld) API, implemented as a
+gateway and five independently deployable domain services. The existing
+frontend keeps using the immutable contract at `http://localhost:8000/api`.
 
 ## Quick start
 
@@ -17,8 +16,9 @@ make microservices-check
 ```
 
 The second command builds the local image, starts PostgreSQL, Kafka, Redis,
-gateway, five domain services and three outbox relays, waits for readiness, and
-runs the canonical RealWorld suite. It leaves the stack running for inspection:
+frontend, gateway, five domain services and three outbox relays, waits for
+readiness, and runs the canonical RealWorld suite. It leaves the stack running
+for inspection:
 
 ```bash
 make microservices-ps
@@ -43,13 +43,13 @@ local development is only a resource-saving implementation detail.
 | posts | `9003` gRPC | articles, tags, favorites, `conduit_posts` | profile, subscriptions |
 | subscriptions | `9004` gRPC | follows, `conduit_subscriptions` | none |
 | comments | `9005` gRPC | comments, `conduit_comments` | posts, profile |
-| PostgreSQL | `5432` | six isolated local databases | — |
+| frontend | `3000` HTTP | server-rendered web application | gateway |
+| PostgreSQL | `5432` | five isolated local databases | — |
 | Kafka | `29092` | asynchronous domain events | outbox relays |
 | Redis | `6379` | disposable profile cache | profile |
 
-The gateway still has `conduit_gateway` during the migration. Its legacy tables
-make the monolith mode and rollback path possible; microservice-mode domain
-writes go to their owning service databases.
+The gateway is stateless and owns no database. All persisted domain state is
+written through the owning gRPC service.
 
 ### gRPC versus Kafka
 
@@ -77,7 +77,7 @@ before PostgreSQL commits. Event details and retry semantics are documented in
 
 | Path | Purpose |
 | --- | --- |
-| `cmd/server` | public HTTP gateway and monolith composition root |
+| `cmd/server` | stateless public HTTP gateway composition root |
 | `cmd/auth`, `cmd/profile`, `cmd/posts` | gRPC service entry points |
 | `cmd/subscriptions`, `cmd/comments` | gRPC service entry points |
 | `cmd/outbox-relay` | reusable PostgreSQL-to-Kafka relay |
@@ -87,8 +87,8 @@ before PostgreSQL commits. Event details and retry semantics are documented in
 | `internal/eventing`, `internal/cache` | Kafka outbox/inbox infrastructure and Redis cache |
 | `proto` | protobuf sources; generated Go is under `internal/gen/grpc` |
 | `services/*/migrations` | database migrations owned by each service |
-| `migrations` | gateway/legacy monolith database migrations |
-| `config` | Viper-compatible YAML defaults for every executable |
+| `migrations/queries` | shared sqlc query inputs used by domain repositories |
+| `config` | typed YAML defaults for every executable |
 | `deploy/compose` | complete local microservice topology |
 | `deploy/kubernetes/base` | HA-oriented Kubernetes base |
 | `deploy/kubernetes/overlays/kind` | one-replica, low-request laptop overlay |
@@ -135,20 +135,6 @@ When the gateway port changes, pass the test address explicitly:
 ```bash
 GATEWAY_HOST=http://localhost:8080 make microservices-test
 ```
-
-### Monolith rollback path
-
-The root Compose file remains the rollback/reference runtime:
-
-```bash
-make monolith-up
-make monolith-test
-make monolith-logs
-make monolith-down
-```
-
-Do not run the monolith and microservice Compose topologies simultaneously with
-their default ports.
 
 ## Local Kubernetes with kind
 
@@ -221,8 +207,8 @@ Common variables:
 
 The development defaults are not production credentials. `.env` is loaded by
 Make for local overrides and is ignored by Git. Compose launch targets use the
-separate `LOCAL_AUTH_*` values so an old monolith secret in `.env` cannot make
-all containers restart; set those variables explicitly when custom local
+separate `LOCAL_AUTH_*` values so unrelated values in `.env` cannot make the
+auth service restart; set those variables explicitly when custom local
 credentials are needed.
 
 ## Development and quality commands

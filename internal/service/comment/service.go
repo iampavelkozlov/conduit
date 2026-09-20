@@ -21,11 +21,7 @@ type Service struct {
 	logger   *slog.Logger
 }
 
-func New(repo repository, users UserService, loggers ...*slog.Logger) *Service {
-	return NewWithResolver(repo, users, &postgresArticleResolver{repo: repo}, loggers...)
-}
-
-func NewWithResolver(repo commentRepository, profiles ProfileReader, articles ArticleResolver, loggers ...*slog.Logger) *Service {
+func New(repo commentRepository, profiles ProfileReader, articles ArticleResolver, loggers ...*slog.Logger) *Service {
 	return &Service{repo: repo, profiles: profiles, articles: articles, logger: shared.ServiceLogger(loggers...)}
 }
 func (s *Service) CreateArticleComment(ctx context.Context, slug string, req models.NewCommentRequest) (*models.SingleCommentResponse, error) {

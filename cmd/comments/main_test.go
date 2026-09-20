@@ -55,7 +55,7 @@ func TestRunWithLifecycleAndErrors(t *testing.T) {
 	cancel()
 	cleaned := false
 	err := runWith(ctx, []string{"--config", path}, func(context.Context, *config.CommentsConfig, *slog.Logger) (*comment.Service, func(), error) {
-		return comment.NewWithResolver(nil, nil, nil), func() { cleaned = true }, nil
+		return comment.New(nil, nil, nil), func() { cleaned = true }, nil
 	}, net.Listen)
 	require.NoError(t, err)
 	require.True(t, cleaned)
@@ -68,7 +68,7 @@ func TestRunWithLifecycleAndErrors(t *testing.T) {
 
 	cleaned = false
 	err = runWith(t.Context(), []string{"--config", path}, func(context.Context, *config.CommentsConfig, *slog.Logger) (*comment.Service, func(), error) {
-		return comment.NewWithResolver(nil, nil, nil), func() { cleaned = true }, nil
+		return comment.New(nil, nil, nil), func() { cleaned = true }, nil
 	}, func(string, string) (net.Listener, error) { return nil, wantErr })
 	require.ErrorIs(t, err, wantErr)
 	require.True(t, cleaned)
@@ -78,7 +78,7 @@ func TestServePublishesHealthAndShutsDown(t *testing.T) {
 	listener, err := new(net.ListenConfig).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = listener.Close() })
-	server, healthServer := newGRPCServer(comment.NewWithResolver(nil, nil, nil))
+	server, healthServer := newGRPCServer(comment.New(nil, nil, nil))
 	ctx, cancel := context.WithCancel(t.Context())
 	errCh := make(chan error, 1)
 	go func() { errCh <- serve(ctx, listener, server, healthServer, slog.New(slog.DiscardHandler)) }()
@@ -103,7 +103,7 @@ func TestServePublishesHealthAndShutsDown(t *testing.T) {
 
 func TestServeReportsListenerFailure(t *testing.T) {
 	wantErr := errors.New("accept failed")
-	server, healthServer := newGRPCServer(comment.NewWithResolver(nil, nil, nil))
+	server, healthServer := newGRPCServer(comment.New(nil, nil, nil))
 	err := serve(t.Context(), errorListener{err: wantErr}, server, healthServer, slog.New(slog.DiscardHandler))
 	require.ErrorContains(t, err, "serve gRPC")
 	require.ErrorIs(t, err, wantErr)

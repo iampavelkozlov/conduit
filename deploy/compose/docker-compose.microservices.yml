@@ -101,18 +101,6 @@ services:
       retries: 20
     networks: [conduit]
 
-  gateway-migrate:
-    <<: *service
-    profiles: [microservices]
-    entrypoint: ["/app/goose"]
-    command: ["-dir", "/app/migrations", "postgres", "postgres://conduit_gateway:gateway@postgres:5432/conduit_gateway?sslmode=disable", "up"]
-    restart: "no"
-    environment:
-      <<: *service-environment
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   gateway:
     <<: *service
     profiles: [microservices]
@@ -120,15 +108,11 @@ services:
     command: ["--addr=:8000"]
     environment:
       <<: *service-environment
-      DB_DSN: postgres://conduit_gateway:gateway@postgres:5432/conduit_gateway?sslmode=disable
-      SERVICES_MODE: grpc
       AUTH_GRPC_TARGET: auth:9001
       PROFILE_GRPC_TARGET: profile:9002
       POSTS_GRPC_TARGET: posts:9003
       SUBSCRIPTIONS_GRPC_TARGET: subscriptions:9004
       COMMENTS_GRPC_TARGET: comments:9005
-      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-development-only-change-me-jwt-secret}
-      AUTH_PASSWORD_PEPPER: ${AUTH_PASSWORD_PEPPER:-development-change-me-pepper}
       HTTP_ALLOWED_ORIGINS: ${HTTP_ALLOWED_ORIGINS:-*}
     ports:
       - "${GATEWAY_PORT:-8000}:8000"
@@ -138,10 +122,32 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+
+  frontend:
+    image: ${CONDUIT_IMAGE:-conduit:local}
+    pull_policy: never
+    profiles: [microservices]
+    restart: unless-stopped
+    init: true
+    entrypoint: ["/app/frontend"]
+    command: ["--config=/app/config/frontend.yaml"]
+    environment:
+      FRONTEND_API_URL: http://gateway:8000/api
+      FRONTEND_LOG_LEVEL: ${FRONTEND_LOG_LEVEL:-info}
+      FRONTEND_LOG_FORMAT: ${FRONTEND_LOG_FORMAT:-json}
+      FRONTEND_COOKIE_SECURE: ${FRONTEND_COOKIE_SECURE:-false}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
-      <<: *service-dependencies
-      gateway-migrate:
-        condition: service_completed_successfully
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks: [conduit]
 
   auth:
     <<: *service

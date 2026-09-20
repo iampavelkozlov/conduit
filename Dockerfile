@@ -77,7 +77,6 @@ COPY --chown=conduit:conduit config/posts.yaml /app/config/posts.yaml
 COPY --chown=conduit:conduit config/subscriptions.yaml /app/config/subscriptions.yaml
 COPY --chown=conduit:conduit config/comments.yaml /app/config/comments.yaml
 COPY --chown=conduit:conduit config/outbox-relay.yaml /app/config/outbox-relay.yaml
-COPY --chown=conduit:conduit migrations /app/migrations
 COPY --chown=conduit:conduit services/auth/migrations /app/migrations/auth
 COPY --chown=conduit:conduit services/profile/migrations /app/migrations/profile
 COPY --chown=conduit:conduit services/posts/migrations /app/migrations/posts

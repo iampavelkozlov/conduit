@@ -3,7 +3,6 @@ package comment
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -142,26 +141,4 @@ func deduplicateUUIDs(ids []uuid.UUID) []uuid.UUID {
 		result = append(result, id)
 	}
 	return result
-}
-
-type postgresArticleResolver struct {
-	repo interface {
-		GetArticleIDBySlug(context.Context, string) (pgtype.UUID, error)
-	}
-}
-
-func (r *postgresArticleResolver) ResolveArticleID(ctx context.Context, slug string) (uuid.UUID, error) {
-	id, err := r.repo.GetArticleIDBySlug(ctx, slug)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, shared.NotFound("article")
-	}
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("resolve article ID: %w", err)
-	}
-	if !id.Valid {
-		// Legacy monolith tests historically use a zero pgtype.UUID as an
-		// arbitrary article identifier. A database row can never contain it.
-		return uuid.Nil, nil
-	}
-	return shared.PGToUUID(id)
 }

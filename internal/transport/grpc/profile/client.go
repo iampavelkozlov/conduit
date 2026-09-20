@@ -91,8 +91,8 @@ func (c *Client) UpdateProfile(ctx context.Context, userID uuid.UUID, update Upd
 	return parseProfile(response.GetProfile())
 }
 
-// IDByUsername resolves legacy list filters. A UUID is accepted directly
-// because the Posts gRPC contract already carries stable profile IDs.
+// IDByUsername resolves article list filters. A UUID is accepted directly
+// because the Posts gRPC contract carries stable profile IDs.
 func (c *Client) IDByUsername(ctx context.Context, username string) (uuid.UUID, error) {
 	if id, err := uuid.Parse(username); err == nil {
 		return id, nil

@@ -57,4 +57,8 @@ redis:
 
 	_, err = LoadProfile(filepath.Join(t.TempDir(), "missing.yaml"))
 	require.ErrorContains(t, err, "read profile config")
+
+	t.Setenv("PROFILE_DB_DSN", " ")
+	_, err = LoadProfile(path)
+	require.ErrorContains(t, err, "validate profile config")
 }

@@ -1,8 +1,5 @@
 -- Development-only bootstrap. Each service owns a database and role even when
 -- all databases share one local PostgreSQL instance.
-CREATE ROLE conduit_gateway LOGIN PASSWORD 'gateway';
-CREATE DATABASE conduit_gateway OWNER conduit_gateway;
-
 CREATE ROLE conduit_auth LOGIN PASSWORD 'auth';
 CREATE DATABASE conduit_auth OWNER conduit_auth;
 

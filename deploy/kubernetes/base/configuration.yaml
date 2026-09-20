@@ -8,7 +8,6 @@ data:
   KAFKA_BROKERS: kafka:9092
   REDIS_ADDR: redis:6379
   PROFILE_REDIS_ADDR: redis:6379
-  SERVICES_MODE: grpc
   AUTH_GRPC_ADDR: auth:9001
   PROFILE_GRPC_ADDR: profile:9002
   POSTS_GRPC_ADDR: posts:9003
@@ -27,8 +26,6 @@ metadata:
   name: postgres-init
 data:
   00-create-service-databases.sql: |
-    CREATE ROLE conduit_gateway LOGIN PASSWORD 'gateway';
-    CREATE DATABASE conduit_gateway OWNER conduit_gateway;
     CREATE ROLE conduit_auth LOGIN PASSWORD 'auth';
     CREATE DATABASE conduit_auth OWNER conduit_auth;
     CREATE ROLE conduit_profile LOGIN PASSWORD 'profile';

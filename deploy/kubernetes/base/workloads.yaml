@@ -55,22 +55,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: conduit-config
-          env:
-            - name: DB_DSN
-              valueFrom:
-                secretKeyRef:
-                  name: conduit-secrets
-                  key: DB_DSN
-            - name: AUTH_JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: conduit-secrets
-                  key: AUTH_JWT_SECRET
-            - name: AUTH_PASSWORD_PEPPER
-              valueFrom:
-                secretKeyRef:
-                  name: conduit-secrets
-                  key: AUTH_PASSWORD_PEPPER
           startupProbe:
             httpGet:
               path: /metrics

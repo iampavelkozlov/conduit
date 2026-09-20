@@ -1,12 +1,12 @@
 # Microservices infrastructure
 
-This directory is the deployment scaffold for the strangler migration. The
-public RealWorld contract remains owned by `gateway`; all other applications
-are internal gRPC services.
+This directory contains the complete deployment topology. The public RealWorld
+contract is owned by the stateless `gateway`; all domain applications are
+internal gRPC services.
 
 | Application | Port | Database | Binary |
 | --- | ---: | --- | --- |
-| gateway | 8000 HTTP | `conduit_gateway` | `/app/conduit` |
+| gateway | 8000 HTTP | none | `/app/conduit` |
 | auth | 9001 gRPC | `conduit_auth` | `/app/auth` |
 | profile | 9002 gRPC | `conduit_profile` | `/app/profile` |
 | posts | 9003 gRPC | `conduit_posts` | `/app/posts` |
@@ -20,18 +20,17 @@ neither is on the synchronous request path by default.
 
 ## Docker Compose
 
-The existing root `docker-compose.yml` is unchanged and remains the supported
-monolith workflow. The microservice scaffold is separate:
+Start only the shared local platform with:
 
 ```bash
 docker-compose -f deploy/compose/docker-compose.microservices.yml up -d postgres kafka redis
 ```
 
-This starts only the shared local platform. Start the complete topology,
-including the gRPC-backed gateway, with:
+Start the complete topology, including the frontend and gRPC-backed gateway,
+with:
 
 ```bash
-docker-compose -f deploy/compose/docker-compose.microservices.yml --profile microservices up --build
+make microservices-up
 ```
 
 The development credentials in the Compose file are intentionally local-only.
@@ -39,7 +38,7 @@ The PostgreSQL bootstrap scripts run only when its volume is first created. If
 the database list changes, create the missing database manually; deleting the
 volume destroys all local data and should only be done deliberately.
 
-Useful host endpoints are gateway `localhost:8000`, Kafka
+Useful host endpoints are frontend `localhost:3000`, gateway `localhost:8000`, Kafka
 `localhost:29092`, Redis `localhost:6379`, and PostgreSQL `localhost:5432`.
 Service ports `9001` through `9005` are published for `grpcurl` and debugging.
 

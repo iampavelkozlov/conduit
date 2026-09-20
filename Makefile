@@ -8,11 +8,11 @@ TOOLS_DIR := $(ROOT_DIR)/.tools/bin
 ARTIFACTS_DIR := $(ROOT_DIR)/.artifacts
 
 COMPOSE ?= $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; elif docker-compose version >/dev/null 2>&1; then echo "docker-compose"; else echo "docker compose"; fi)
-MONOLITH_COMPOSE_FILE := $(ROOT_DIR)/docker-compose.yml
 MICROSERVICES_COMPOSE_FILE := $(ROOT_DIR)/deploy/compose/docker-compose.microservices.yml
 MICROSERVICES_PROJECT ?= conduit-microservices
 CONDUIT_IMAGE ?= conduit:local
 GATEWAY_HOST ?= http://localhost:8000
+FRONTEND_HOST ?= http://localhost:3000
 LOCAL_AUTH_JWT_SECRET ?= development-only-change-me-jwt-secret
 LOCAL_AUTH_PASSWORD_PEPPER ?= development-change-me-pepper
 LOCAL_COMPOSE_ENV = AUTH_JWT_SECRET="$(LOCAL_AUTH_JWT_SECRET)" AUTH_PASSWORD_PEPPER="$(LOCAL_AUTH_PASSWORD_PEPPER)"
@@ -37,8 +37,6 @@ GO_ARCH_LINT_VERSION := v1.18.0
 GO_ARCH_LINT := $(shell go env GOPATH)/bin/go-arch-lint
 GO_TEST_COVERAGE_VERSION := v2.19.0
 GO_TEST_COVERAGE := $(shell go env GOPATH)/bin/go-test-coverage
-GOOSE_VERSION := v3.28.0
-GOOSE := $(shell go env GOPATH)/bin/goose
 SQLC_VERSION := v1.30.0
 SQLC := $(shell go env GOPATH)/bin/sqlc
 SQLC_CONFIGS := sqlc.yaml $(shell find services -name sqlc.yaml -type f | sort)
@@ -49,16 +47,13 @@ PROTOC_GEN_GO := $(shell go env GOPATH)/bin/protoc-gen-go
 PROTOC_GEN_GO_GRPC_VERSION := v1.6.2
 PROTOC_GEN_GO_GRPC := $(shell go env GOPATH)/bin/protoc-gen-go-grpc
 BUF_BREAKING_AGAINST ?= .git\#branch=main,subdir=proto
-MIGRATIONS_DIR := migrations
-DB_DSN ?= postgres://postgres:postgres@localhost:5432/conduit?sslmode=disable
 COVERAGE_PROFILE ?= coverage.out
 COVERAGE_BADGE ?= docs/coverage.svg
 
 .PHONY: help doctor test vet check image \
-	monolith-up monolith-down monolith-ps monolith-logs monolith-test \
 	microservices-build microservices-platform-up microservices-up microservices-wait microservices-down microservices-reset microservices-ps microservices-logs microservices-test microservices-check microservices-topics microservices-outbox \
 	k8s-tools k8s-render k8s-validate kind-create kind-load k8s-up k8s-migrate k8s-status k8s-logs k8s-test k8s-check k8s-down \
-	oapi-codegen gen-http go-wrap goose-install migrate sqlc-install sqlc grpc-tools grpc-lint grpc-breaking gen-grpc wire mocks wrap generate golangci-lint-install lint go-arch-lint-install arch-lint arch-graph go-test-coverage-install coverage badges quality
+	oapi-codegen gen-http go-wrap sqlc-install sqlc grpc-tools grpc-lint grpc-breaking gen-grpc wire mocks wrap generate golangci-lint-install lint go-arch-lint-install arch-lint arch-graph go-test-coverage-install coverage badges quality
 
 -include .env
 export
@@ -87,21 +82,6 @@ check: test vet grpc-lint arch-lint ## Run fast local correctness checks without
 image: ## Build the all-in-one local container image.
 	docker build --tag $(CONDUIT_IMAGE) .
 
-monolith-up: image ## Build and start the legacy monolith stack on :8000.
-	@$(LOCAL_COMPOSE_ENV) CONDUIT_IMAGE=$(CONDUIT_IMAGE) CONDUIT_PULL_POLICY=never $(COMPOSE) --file $(MONOLITH_COMPOSE_FILE) up --detach --build
-
-monolith-down: ## Stop the monolith stack without deleting database data.
-	$(COMPOSE) --file $(MONOLITH_COMPOSE_FILE) down --remove-orphans
-
-monolith-ps: ## Show monolith containers and health.
-	$(COMPOSE) --file $(MONOLITH_COMPOSE_FILE) ps
-
-monolith-logs: ## Follow monolith logs (Ctrl-C only stops following).
-	$(COMPOSE) --file $(MONOLITH_COMPOSE_FILE) logs --follow --tail=200
-
-monolith-test: ## Run canonical RealWorld tests against the running monolith.
-	HOST=$(GATEWAY_HOST) bash apitests/run-hurl-tests.sh
-
 microservices-build: image ## Build the image shared by all local microservices.
 
 microservices-platform-up: ## Start only PostgreSQL, Kafka, and Redis.
@@ -111,13 +91,13 @@ microservices-up: microservices-build ## Start the complete Compose microservice
 	@$(MICRO_COMPOSE) up --detach --remove-orphans
 	@$(MAKE) --no-print-directory microservices-wait
 
-microservices-wait: ## Wait until the Compose gateway accepts HTTP requests.
+microservices-wait: ## Wait until the Compose gateway and frontend accept HTTP requests.
 	@set -eu; \
 	for attempt in $$(seq 1 90); do \
-		if curl --fail --silent --show-error $(GATEWAY_HOST)/metrics >/dev/null 2>&1; then echo "gateway is ready at $(GATEWAY_HOST)"; exit 0; fi; \
+		if curl --fail --silent --show-error $(GATEWAY_HOST)/metrics >/dev/null 2>&1 && curl --fail --silent --show-error $(FRONTEND_HOST)/ >/dev/null 2>&1; then echo "gateway and frontend are ready"; exit 0; fi; \
 		sleep 2; \
 	done; \
-	echo "gateway did not become ready; run 'make microservices-logs'" >&2; exit 1
+	echo "gateway or frontend did not become ready; run 'make microservices-logs'" >&2; exit 1
 
 microservices-down: ## Stop the Compose microservices and preserve volumes.
 	@$(MICRO_COMPOSE) down --remove-orphans
@@ -180,7 +160,7 @@ k8s-validate: k8s-render ## Render and verify both Kubernetes variants without a
 	@test -s $(ARTIFACTS_DIR)/kubernetes/jobs.yaml
 	@test "$$(grep -c '^kind: HorizontalPodAutoscaler' $(ARTIFACTS_DIR)/kubernetes/base.yaml)" -eq 6
 	@test "$$(grep -c '^kind: HorizontalPodAutoscaler' $(ARTIFACTS_DIR)/kubernetes/kind.yaml || true)" -eq 0
-	@test "$$(grep -c '^kind: Job' $(ARTIFACTS_DIR)/kubernetes/jobs.yaml)" -eq 7
+	@test "$$(grep -c '^kind: Job' $(ARTIFACTS_DIR)/kubernetes/jobs.yaml)" -eq 6
 
 kind-create: $(KIND) ## Create the local kind cluster if it does not exist.
 	@if $(KIND) get clusters | grep -Fxq '$(KIND_CLUSTER)'; then echo "kind cluster $(KIND_CLUSTER) already exists"; else $(KIND) create cluster --name $(KIND_CLUSTER) --wait 180s; fi
@@ -237,12 +217,6 @@ go-wrap:
 
 wrap: go-wrap
 	go generate ./internal/metrics
-
-goose-install:
-	go install github.com/pressly/goose/v3/cmd/goose@$(GOOSE_VERSION)
-
-migrate: goose-install
-	$(GOOSE) -dir $(MIGRATIONS_DIR) postgres "$(DB_DSN)" up
 
 sqlc-install:
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION)

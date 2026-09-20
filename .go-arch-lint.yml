@@ -62,7 +62,6 @@ components:
   repository:
     in:
       - internal/gen/postgres
-      - internal/gen/auth/postgres
       - internal/gen/profile/postgres
       - internal/repository/**
       - internal/storage/**

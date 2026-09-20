@@ -27,8 +27,7 @@ type ProfileReader interface {
 	ProfilesByIDs(context.Context, []uuid.UUID) (map[uuid.UUID]models.Profile, error)
 }
 
-// UserService is kept as the monolith-facing compatibility boundary while
-// ProfileReader names the same narrow capability for extracted transports.
+// UserService names the profile lookup capability used by comment composition.
 type UserService interface {
 	ProfileReader
 }

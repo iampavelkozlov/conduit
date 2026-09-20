@@ -61,4 +61,8 @@ subscriptions:
 
 	_, err = LoadPosts(filepath.Join(t.TempDir(), "missing.yaml"))
 	require.ErrorContains(t, err, "read posts config")
+
+	t.Setenv("POSTS_DB_DSN", " ")
+	_, err = LoadPosts(path)
+	require.ErrorContains(t, err, "validate posts config")
 }

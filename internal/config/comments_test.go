@@ -61,4 +61,8 @@ clients:
 
 	_, err = LoadComments(filepath.Join(t.TempDir(), "missing.yaml"))
 	require.ErrorContains(t, err, "read comments config")
+
+	t.Setenv("COMMENTS_DB_DSN", " ")
+	_, err = LoadComments(path)
+	require.ErrorContains(t, err, "validate comments config")
 }

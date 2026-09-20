@@ -10,15 +10,12 @@ import (
 )
 
 type Config struct {
-	DB       DBConfig             `yaml:"db"`
 	Logger   LoggerConfig         `yaml:"logger"`
-	Auth     AuthConfig           `yaml:"auth"`
 	HTTP     HTTPConfig           `yaml:"http"`
 	Services RemoteServicesConfig `yaml:"services"`
 }
 
 type RemoteServicesConfig struct {
-	Mode          string                        `yaml:"mode" env:"SERVICES_MODE" env-default:"local"`
 	Timeout       time.Duration                 `yaml:"timeout" env:"SERVICES_GRPC_TIMEOUT" env-default:"3s"`
 	Auth          AuthGRPCClientConfig          `yaml:"auth"`
 	Profile       ProfileGRPCClientConfig       `yaml:"profile"`
@@ -41,14 +38,6 @@ type CommentsGRPCClientConfig struct {
 }
 type SubscriptionsGRPCClientConfig struct {
 	Target string `yaml:"target" env:"SUBSCRIPTIONS_GRPC_TARGET"`
-}
-
-// GRPCClientConfig is kept as a source-compatible alias for staged
-// subscriptions configuration constructed by existing tests and callers.
-type GRPCClientConfig = SubscriptionsGRPCClientConfig
-
-type DBConfig struct {
-	DSN string `yaml:"dsn" env:"DB_DSN"`
 }
 
 type LoggerConfig struct {
@@ -83,24 +72,12 @@ func Load(path string) (*Config, error) {
 
 func (c *Config) Validate() error {
 	switch {
-	case strings.TrimSpace(c.DB.DSN) == "":
-		return errors.New("database DSN must not be empty")
-	case len(c.Auth.JWTSecret) < 32:
-		return errors.New("JWT secret must contain at least 32 bytes")
-	case len(c.Auth.PasswordPepper) < 16:
-		return errors.New("password pepper must contain at least 16 bytes")
-	case c.Auth.AccessTokenTTL <= 0:
-		return errors.New("access token TTL must be positive")
-	case c.Auth.RefreshTokenTTL <= c.Auth.AccessTokenTTL:
-		return errors.New("refresh token TTL must exceed access token TTL")
 	case len(c.HTTP.AllowedOrigins) == 0:
 		return errors.New("at least one allowed HTTP origin is required")
-	case c.Services.Mode != "local" && c.Services.Mode != "grpc":
-		return errors.New("services mode must be local or grpc")
 	case c.Services.Timeout <= 0:
 		return errors.New("services gRPC timeout must be positive")
-	case c.Services.Mode == "grpc" && (c.Services.Auth.Target == "" || c.Services.Profile.Target == "" || c.Services.Posts.Target == "" || c.Services.Comments.Target == "" || c.Services.Subscriptions.Target == ""):
-		return errors.New("all gRPC service targets are required in grpc mode")
+	case strings.TrimSpace(c.Services.Auth.Target) == "" || strings.TrimSpace(c.Services.Profile.Target) == "" || strings.TrimSpace(c.Services.Posts.Target) == "" || strings.TrimSpace(c.Services.Comments.Target) == "" || strings.TrimSpace(c.Services.Subscriptions.Target) == "":
+		return errors.New("all gRPC service targets are required")
 	default:
 		return nil
 	}

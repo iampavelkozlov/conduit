@@ -24,54 +24,26 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 	if err != nil {
 		return nil, nil, err
 	}
-	pool, cleanup, err := provideDatabase(ctx, configConfig, logger)
+	v, cleanup, err := provideApplicationService(configConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	v := providePrometheusRegistry()
-	repository, err := provideRepositoryMetrics(v)
+	authMiddleware := provideAuthMiddleware(v)
+	v2 := providePrometheusRegistry()
+	metricsHTTP, err := provideHTTPMetrics(v2)
 	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
-	querier := provideQueries(pool, repository)
-	v2 := provideQueryDecorator(repository)
-	transactions := provideTransactions(pool, v2)
-	dependency, cleanup2 := provideFollowService(querier, configConfig, logger)
-	service := provideUserService(querier, dependency, configConfig, logger)
-	tagService := provideTagService(querier, logger)
-	articletagService := provideArticleTagService(querier, logger)
-	favoriteService := provideFavoriteService(querier, logger)
-	articleService := provideArticleService(querier, transactions, service, tagService, articletagService, favoriteService, dependency, logger)
-	authService := provideAuthService(querier, transactions, configConfig, logger)
-	commentService := provideCommentService(querier, service, logger)
-	v3, cleanup3, err := provideApplicationService(articleService, authService, commentService, tagService, service, configConfig)
-	if err != nil {
-		cleanup2()
-		cleanup()
-		return nil, nil, err
-	}
-	authMiddleware := provideAuthMiddleware(v3)
-	metricsHTTP, err := provideHTTPMetrics(v)
-	if err != nil {
-		cleanup3()
-		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
 	panicReporter := providePanicReporter(logger)
-	strictServerInterface := http.NewServer(v3)
-	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, v3, v)
+	strictServerInterface := http.NewServer(v)
+	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, v, v2)
 	if err != nil {
-		cleanup3()
-		cleanup2()
 		cleanup()
 		return nil, nil, err
 	}
 	mainApplication := newApplication(logger, handler)
 	return mainApplication, func() {
-		cleanup3()
-		cleanup2()
 		cleanup()
 	}, nil
 }

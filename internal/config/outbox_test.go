@@ -41,6 +41,10 @@ relay:
 
 	_, err = LoadOutboxRelay(filepath.Join(t.TempDir(), "missing"))
 	require.ErrorContains(t, err, "read outbox relay config")
+
+	t.Setenv("OUTBOX_SOURCE", " ")
+	_, err = LoadOutboxRelay(path)
+	require.ErrorContains(t, err, "validate outbox relay config")
 }
 
 func TestOutboxRelayConfigValidation(t *testing.T) {

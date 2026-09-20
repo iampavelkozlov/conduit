@@ -1,7 +1,11 @@
 version: "2"
 sql:
   - schema:
-      - "migrations/*.sql"
+      - "services/auth/migrations/00001_create_credentials.sql"
+      - "services/posts/migrations/00001_create_posts.sql"
+      - "services/posts/migrations/00002_event_outbox.sql"
+      - "services/comments/migrations/00001_create_comments.sql"
+      - "services/subscriptions/migrations/00001_create_follows.sql"
     queries:
       - "migrations/queries/*.sql"
     engine: "postgresql"
