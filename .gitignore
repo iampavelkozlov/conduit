@@ -12,6 +12,8 @@
 # Go caches / build artifacts
 .gocache/
 .gomodcache/
+.tools/
+.artifacts/
 bin/
 *.test
 *.out

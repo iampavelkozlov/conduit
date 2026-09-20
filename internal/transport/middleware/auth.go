@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"conduit/internal/service"
 	"conduit/internal/service/shared"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -18,7 +17,7 @@ type AuthMiddleware struct {
 	svc tokenValidator
 }
 
-func NewAuthMiddleware(svc *service.Service) *AuthMiddleware {
+func NewAuthMiddleware(svc tokenValidator) *AuthMiddleware {
 	return &AuthMiddleware{svc: svc}
 }
 

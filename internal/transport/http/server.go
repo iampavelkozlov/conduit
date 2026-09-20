@@ -11,7 +11,6 @@ import (
 
 	api "conduit/internal/gen/http"
 	"conduit/internal/models"
-	"conduit/internal/service"
 	"conduit/internal/service/shared"
 
 	"github.com/jackc/pgx/v5"
@@ -57,7 +56,7 @@ type Server struct {
 	svc applicationService
 }
 
-func NewServer(svc *service.Service) api.StrictServerInterface {
+func NewServer(svc ApplicationService) api.StrictServerInterface {
 	return Server{svc: svc}
 }
 

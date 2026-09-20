@@ -1,6 +1,3 @@
-db:
-  dsn: "postgres://postgres:postgres@localhost:5432/conduit?sslmode=disable"
-
 logger:
   level: "info"   # debug|info|warn|error
   format: "text"  # text|json
@@ -9,8 +6,10 @@ http:
   # Override HTTP_ALLOWED_ORIGINS with a comma-separated production allowlist.
   allowed_origins: ["*"]
 
-auth:
-  jwt_secret: "development-only-change-me-jwt-secret"
-  password_pepper: "development-change-me-pepper"
-  access_token_ttl: "15m"
-  refresh_token_ttl: "720h"
+services:
+  timeout: "3s"
+  auth: { target: "localhost:9001" }
+  profile: { target: "localhost:9002" }
+  posts: { target: "localhost:9003" }
+  subscriptions: { target: "localhost:9004" }
+  comments: { target: "localhost:9005" }

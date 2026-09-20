@@ -1,0 +1,13 @@
+db:
+  dsn: "postgres://conduit_comments:comments@localhost:5432/conduit_comments?sslmode=disable"
+
+logger:
+  level: "info"
+  format: "text"
+
+grpc:
+  address: ":9005"
+
+clients:
+  posts_address: "localhost:9003"
+  profile_address: "localhost:9002"

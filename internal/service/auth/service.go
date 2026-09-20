@@ -29,6 +29,13 @@ type Service struct {
 	logger       *slog.Logger
 }
 
+// Account is the credentials-owned projection exposed by Auth. Public profile
+// fields deliberately do not cross this boundary.
+type Account struct {
+	UserID uuid.UUID
+	Email  string
+}
+
 func New(repo Repository, transactions transactions, cfg config.AuthConfig, loggers ...*slog.Logger) *Service {
 	return &Service{
 		userRepo:     repo,
@@ -175,6 +182,87 @@ func (s *Service) RefreshToken(ctx context.Context, accessToken, refreshToken st
 
 func (s *Service) ValidateAccessToken(token string) (*TokenClaims, error) {
 	return s.tokenMgr.ValidateAccessToken(token)
+}
+
+func (s *Service) ValidateRefreshToken(token string) (*TokenClaims, error) {
+	return s.tokenMgr.ValidateRefreshToken(token)
+}
+
+func (s *Service) GetAccount(ctx context.Context, userID uuid.UUID) (*Account, error) {
+	user, err := s.userRepo.GetUserByID(ctx, uuidToPGType(userID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, shared.NotFound("account")
+		}
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
+		return nil, err
+	}
+	return accountFromUser(&user)
+}
+
+func (s *Service) UpdateCredentials(ctx context.Context, userID uuid.UUID, email, password *string) (*Account, error) {
+	if email != nil && *email == "" {
+		return nil, shared.Validation("email", "can't be blank")
+	}
+	if password != nil && *password == "" {
+		return nil, shared.Validation("password", "can't be blank")
+	}
+	if password != nil && len(*password) < 8 {
+		return nil, shared.Validation("password", "is too short")
+	}
+
+	passwordHash := ""
+	var err error
+	if password != nil {
+		passwordHash, err = s.passwordMgr.Hash(*password)
+		if err != nil {
+			s.logger.LogAttrs(ctx, slog.LevelError, "auth password err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
+			return nil, fmt.Errorf("hash password: %w", err)
+		}
+	}
+
+	user, err := s.userRepo.UpdateUser(ctx, postgres.UpdateUserParams{
+		SetEmail:     email != nil,
+		Email:        valueOrZero(email),
+		SetPassword:  password != nil,
+		PasswordHash: passwordHash,
+		ID:           uuidToPGType(userID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, shared.NotFound("account")
+		}
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
+		return nil, err
+	}
+	return accountFromUser(&user)
+}
+
+func (s *Service) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
+	rows, err := s.userRepo.DeleteUser(ctx, uuidToPGType(userID))
+	if err != nil {
+		s.logger.LogAttrs(ctx, slog.LevelError, "auth repo err", shared.ErrorAttrs(err, slog.String("user_id", userID.String()))...)
+		return err
+	}
+	if rows == 0 {
+		return shared.NotFound("account")
+	}
+	return nil
+}
+
+func accountFromUser(user *postgres.User) (*Account, error) {
+	userID, err := shared.PGToUUID(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("parse user id: %w", err)
+	}
+	return &Account{UserID: userID, Email: user.Email}, nil
+}
+
+func valueOrZero(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func (s *Service) issueTokensForUser(ctx context.Context, user *postgres.User, sessions SessionRepository) (*models.UserResponse, error) {

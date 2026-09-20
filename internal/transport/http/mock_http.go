@@ -11,6 +11,7 @@ package http
 
 import (
 	models "conduit/internal/models"
+	auth "conduit/internal/service/auth"
 	context "context"
 	reflect "reflect"
 
@@ -337,4 +338,19 @@ func (m *MockapplicationService) UpdateCurrentUser(arg0 context.Context, arg1 *m
 func (mr *MockapplicationServiceMockRecorder) UpdateCurrentUser(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCurrentUser", reflect.TypeOf((*MockapplicationService)(nil).UpdateCurrentUser), arg0, arg1)
+}
+
+// ValidateAccessToken mocks base method.
+func (m *MockapplicationService) ValidateAccessToken(arg0 string) (*auth.TokenClaims, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateAccessToken", arg0)
+	ret0, _ := ret[0].(*auth.TokenClaims)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ValidateAccessToken indicates an expected call of ValidateAccessToken.
+func (mr *MockapplicationServiceMockRecorder) ValidateAccessToken(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateAccessToken", reflect.TypeOf((*MockapplicationService)(nil).ValidateAccessToken), arg0)
 }

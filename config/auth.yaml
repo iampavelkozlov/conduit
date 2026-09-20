@@ -1,0 +1,17 @@
+db:
+  dsn: "postgres://postgres:postgres@localhost:5432/conduit_auth?sslmode=disable"
+
+logger:
+  level: "info"
+  format: "text"
+
+auth:
+  # Keep these identical to the gateway values during the strangler migration
+  # so access and refresh tokens remain valid across both processes.
+  jwt_secret: "development-only-change-me-jwt-secret"
+  password_pepper: "development-change-me-pepper"
+  access_token_ttl: "15m"
+  refresh_token_ttl: "720h"
+
+grpc:
+  address: ":9001"

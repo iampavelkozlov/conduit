@@ -8,9 +8,7 @@ package main
 
 import (
 	"conduit/internal/config"
-	"conduit/internal/service"
 	"conduit/internal/transport/http"
-	"conduit/internal/transport/middleware"
 	"context"
 )
 
@@ -26,37 +24,20 @@ func initializeApplication(ctx context.Context, configPath string) (*application
 	if err != nil {
 		return nil, nil, err
 	}
-	pool, cleanup, err := provideDatabase(ctx, configConfig, logger)
+	v, cleanup, err := provideApplicationService(configConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	v := providePrometheusRegistry()
-	repository, err := provideRepositoryMetrics(v)
-	if err != nil {
-		cleanup()
-		return nil, nil, err
-	}
-	querier := provideQueries(pool, repository)
-	v2 := provideQueryDecorator(repository)
-	transactions := provideTransactions(pool, v2)
-	followService := provideFollowService(querier, logger)
-	userService := provideUserService(querier, followService, configConfig, logger)
-	tagService := provideTagService(querier, logger)
-	articletagService := provideArticleTagService(querier, logger)
-	favoriteService := provideFavoriteService(querier, logger)
-	articleService := provideArticleService(querier, transactions, userService, tagService, articletagService, favoriteService, followService, logger)
-	authService := provideAuthService(querier, transactions, configConfig, logger)
-	commentService := provideCommentService(querier, userService, logger)
-	serviceService := service.New(articleService, authService, commentService, tagService, userService)
-	authMiddleware := middleware.NewAuthMiddleware(serviceService)
-	metricsHTTP, err := provideHTTPMetrics(v)
+	authMiddleware := provideAuthMiddleware(v)
+	v2 := providePrometheusRegistry()
+	metricsHTTP, err := provideHTTPMetrics(v2)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
 	panicReporter := providePanicReporter(logger)
-	strictServerInterface := http.NewServer(serviceService)
-	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, serviceService, v)
+	strictServerInterface := http.NewServer(v)
+	handler, err := provideHTTPHandler(configConfig, authMiddleware, metricsHTTP, panicReporter, strictServerInterface, v, v2)
 	if err != nil {
 		cleanup()
 		return nil, nil, err

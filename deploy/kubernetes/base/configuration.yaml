@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: conduit-config
+data:
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  KAFKA_BROKERS: kafka:9092
+  REDIS_ADDR: redis:6379
+  PROFILE_REDIS_ADDR: redis:6379
+  AUTH_GRPC_ADDR: auth:9001
+  PROFILE_GRPC_ADDR: profile:9002
+  POSTS_GRPC_ADDR: posts:9003
+  SUBSCRIPTIONS_GRPC_ADDR: subscriptions:9004
+  COMMENTS_GRPC_ADDR: comments:9005
+  AUTH_GRPC_TARGET: auth:9001
+  PROFILE_GRPC_TARGET: profile:9002
+  POSTS_GRPC_TARGET: posts:9003
+  SUBSCRIPTIONS_GRPC_TARGET: subscriptions:9004
+  COMMENTS_GRPC_TARGET: comments:9005
+  HTTP_ALLOWED_ORIGINS: "*"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+data:
+  00-create-service-databases.sql: |
+    CREATE ROLE conduit_auth LOGIN PASSWORD 'auth';
+    CREATE DATABASE conduit_auth OWNER conduit_auth;
+    CREATE ROLE conduit_profile LOGIN PASSWORD 'profile';
+    CREATE DATABASE conduit_profile OWNER conduit_profile;
+    CREATE ROLE conduit_posts LOGIN PASSWORD 'posts';
+    CREATE DATABASE conduit_posts OWNER conduit_posts;
+    CREATE ROLE conduit_comments LOGIN PASSWORD 'comments';
+    CREATE DATABASE conduit_comments OWNER conduit_comments;
+    CREATE ROLE conduit_subscriptions LOGIN PASSWORD 'subscriptions';
+    CREATE DATABASE conduit_subscriptions OWNER conduit_subscriptions;

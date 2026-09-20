@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package conduit.comments.v1;
+
+import "conduit/common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "conduit/internal/gen/grpc/conduit/comments/v1;commentsv1";
+
+// CommentsService owns comments and their association with an article UUID.
+service CommentsService {
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+  rpc GetComment(GetCommentRequest) returns (GetCommentResponse);
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+}
+
+message Comment {
+  string id = 1;
+  uint64 public_id = 2;
+  string article_id = 3;
+  string author_id = 4;
+  string body = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message CreateCommentRequest {
+  string article_id = 1;
+  string author_id = 2;
+  string body = 3;
+  string idempotency_key = 4;
+}
+
+message CreateCommentResponse {
+  Comment comment = 1;
+}
+
+message GetCommentRequest {
+  string article_id = 1;
+  uint64 public_id = 2;
+}
+
+message GetCommentResponse {
+  Comment comment = 1;
+}
+
+message ListCommentsRequest {
+  string article_id = 1;
+  conduit.common.v1.Page page = 2;
+}
+
+message ListCommentsResponse {
+  repeated Comment comments = 1;
+  uint64 comments_count = 2;
+}
+
+message DeleteCommentRequest {
+  string article_id = 1;
+  uint64 public_id = 2;
+  string requester_id = 3;
+  string idempotency_key = 4;
+}
+
+message DeleteCommentResponse {
+  bool deleted = 1;
+}

@@ -27,6 +27,17 @@ vendors:
   database: { in: github.com/jackc/pgx/** }
   di: { in: github.com/google/wire }
   observability: { in: github.com/prometheus/client_golang/** }
+  grpc:
+    in:
+      - google.golang.org/grpc
+      - google.golang.org/grpc/**
+      - google.golang.org/genproto/**
+  kafka: { in: github.com/twmb/franz-go/** }
+  protobuf: { in: google.golang.org/protobuf/** }
+  redis:
+    in:
+      - github.com/redis/go-redis/v9
+      - github.com/redis/go-redis/**
   utilities:
     in:
       - github.com/google/uuid
@@ -43,11 +54,15 @@ components:
   logging: { in: internal/logger }
   metrics: { in: internal/metrics }
   api: { in: internal/gen/http }
+  rpcapi: { in: internal/gen/grpc/** }
+  eventing: { in: internal/eventing }
+  cache: { in: internal/cache/** }
   frontend: { in: frontend }
   models: { in: internal/models }
   repository:
     in:
       - internal/gen/postgres
+      - internal/gen/profile/postgres
       - internal/repository/**
       - internal/storage/**
   service: { in: internal/service/** }
@@ -57,21 +72,40 @@ deps:
   composition:
     mayDependOn:
       - api
+      - cache
       - configuration
       - frontend
+      - eventing
       - logging
       - metrics
       - repository
+      - rpcapi
       - service
       - transport
     canUse:
       - database
       - di
       - observability
+      - grpc
+      - utilities
       - web
   configuration:
     canUse:
       - config
+  eventing:
+    mayDependOn:
+      - repository
+    canUse:
+      - database
+      - kafka
+      - observability
+      - utilities
+  cache:
+    mayDependOn:
+      - service
+    canUse:
+      - redis
+      - utilities
   logging:
     mayDependOn:
       - configuration
@@ -85,6 +119,12 @@ deps:
   api:
     canUse:
       - web
+  rpcapi:
+    mayDependOn:
+      - rpcapi
+    canUse:
+      - grpc
+      - protobuf
   frontend:
     mayDependOn:
       - api
@@ -112,9 +152,14 @@ deps:
     mayDependOn:
       - api
       - models
+      - rpcapi
       - service
+      - transport
     canUse:
+      - crypto
       - database
+      - grpc
       - observability
+      - protobuf
       - utilities
       - web

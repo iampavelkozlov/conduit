@@ -49,6 +49,31 @@ type Follow struct {
 	UpdatedAt  pgtype.Timestamptz
 }
 
+type InboxEvent struct {
+	EventID     pgtype.UUID
+	Consumer    string
+	LockedAt    pgtype.Timestamptz
+	ProcessedAt pgtype.Timestamptz
+	LastError   pgtype.Text
+}
+
+type OutboxEvent struct {
+	ID           pgtype.UUID
+	Topic        string
+	EventKey     string
+	EventType    string
+	EventVersion int32
+	Source       string
+	AggregateID  pgtype.UUID
+	Payload      []byte
+	OccurredAt   pgtype.Timestamptz
+	AvailableAt  pgtype.Timestamptz
+	LockedAt     pgtype.Timestamptz
+	Attempts     int32
+	PublishedAt  pgtype.Timestamptz
+	LastError    pgtype.Text
+}
+
 type Session struct {
 	ID           pgtype.UUID
 	RefreshToken string

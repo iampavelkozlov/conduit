@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package conduit.posts.v1;
+
+import "conduit/common/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "conduit/internal/gen/grpc/conduit/posts/v1;postsv1";
+
+// PostsService owns articles, tags, and article favorites.
+service PostsService {
+  rpc CreateArticle(CreateArticleRequest) returns (CreateArticleResponse);
+  rpc GetArticle(GetArticleRequest) returns (GetArticleResponse);
+  rpc ResolveArticleID(ResolveArticleIDRequest) returns (ResolveArticleIDResponse);
+  rpc ListArticles(ListArticlesRequest) returns (ListArticlesResponse);
+  rpc ListFeed(ListFeedRequest) returns (ListFeedResponse);
+  rpc UpdateArticle(UpdateArticleRequest) returns (UpdateArticleResponse);
+  rpc DeleteArticle(DeleteArticleRequest) returns (DeleteArticleResponse);
+  rpc FavoriteArticle(FavoriteArticleRequest) returns (FavoriteArticleResponse);
+  rpc UnfavoriteArticle(UnfavoriteArticleRequest) returns (UnfavoriteArticleResponse);
+  rpc ListTags(ListTagsRequest) returns (ListTagsResponse);
+}
+
+message Article {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string description = 4;
+  string body = 5;
+  repeated string tag_list = 6;
+  string author_id = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  bool favorited = 10;
+  uint64 favorites_count = 11;
+}
+
+message CreateArticleRequest {
+  string author_id = 1;
+  string title = 2;
+  string description = 3;
+  string body = 4;
+  repeated string tag_list = 5;
+  string viewer_id = 6;
+  string idempotency_key = 7;
+}
+
+message CreateArticleResponse {
+  Article article = 1;
+}
+
+message GetArticleRequest {
+  string slug = 1;
+  string viewer_id = 2;
+}
+
+message GetArticleResponse {
+  Article article = 1;
+}
+
+message ResolveArticleIDRequest {
+  string slug = 1;
+}
+
+message ResolveArticleIDResponse {
+  string article_id = 1;
+}
+
+message ListArticlesRequest {
+  optional string tag = 1;
+  optional string author_id = 2;
+  optional string favorited_by_user_id = 3;
+  string viewer_id = 4;
+  conduit.common.v1.Page page = 5;
+}
+
+message ListArticlesResponse {
+  repeated Article articles = 1;
+  uint64 articles_count = 2;
+}
+
+message ListFeedRequest {
+  string viewer_id = 1;
+  repeated string author_ids = 2;
+  conduit.common.v1.Page page = 3;
+}
+
+message ListFeedResponse {
+  repeated Article articles = 1;
+  uint64 articles_count = 2;
+}
+
+message UpdateArticleRequest {
+  string slug = 1;
+  string requester_id = 2;
+  optional string title = 3;
+  optional string description = 4;
+  optional string body = 5;
+  optional TagList tag_list = 6;
+  string viewer_id = 7;
+  string idempotency_key = 8;
+}
+
+message TagList {
+  repeated string values = 1;
+}
+
+message UpdateArticleResponse {
+  Article article = 1;
+}
+
+message DeleteArticleRequest {
+  string slug = 1;
+  string requester_id = 2;
+  string idempotency_key = 3;
+}
+
+message DeleteArticleResponse {
+  bool deleted = 1;
+}
+
+message FavoriteArticleRequest {
+  string slug = 1;
+  string user_id = 2;
+  string idempotency_key = 3;
+}
+
+message FavoriteArticleResponse {
+  Article article = 1;
+  bool created = 2;
+}
+
+message UnfavoriteArticleRequest {
+  string slug = 1;
+  string user_id = 2;
+  string idempotency_key = 3;
+}
+
+message UnfavoriteArticleResponse {
+  Article article = 1;
+  bool removed = 2;
+}
+
+message ListTagsRequest {}
+
+message ListTagsResponse {
+  repeated string tags = 1;
+}

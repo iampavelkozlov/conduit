@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package conduit.profile.v1;
+
+import "conduit/common/v1/common.proto";
+
+option go_package = "conduit/internal/gen/grpc/conduit/profile/v1;profilev1";
+
+// ProfileService owns public user identity and presentation fields.
+service ProfileService {
+  rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc GetProfileByUsername(GetProfileByUsernameRequest) returns (GetProfileByUsernameResponse);
+  rpc BatchGetProfiles(BatchGetProfilesRequest) returns (BatchGetProfilesResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+}
+
+message Profile {
+  string user_id = 1;
+  string username = 2;
+  optional string bio = 3;
+  optional string image = 4;
+}
+
+message CreateProfileRequest {
+  string user_id = 1;
+  string username = 2;
+  string idempotency_key = 3;
+}
+
+message CreateProfileResponse {
+  Profile profile = 1;
+  bool created = 2;
+}
+
+message GetProfileRequest {
+  string user_id = 1;
+}
+
+message GetProfileResponse {
+  Profile profile = 1;
+}
+
+message GetProfileByUsernameRequest {
+  string username = 1;
+}
+
+message GetProfileByUsernameResponse {
+  Profile profile = 1;
+}
+
+message BatchGetProfilesRequest {
+  repeated string user_ids = 1;
+}
+
+message BatchGetProfilesResponse {
+  repeated Profile profiles = 1;
+}
+
+message UpdateProfileRequest {
+  string user_id = 1;
+  optional string username = 2;
+  conduit.common.v1.NullableString bio = 3;
+  conduit.common.v1.NullableString image = 4;
+  string idempotency_key = 5;
+}
+
+message UpdateProfileResponse {
+  Profile profile = 1;
+}

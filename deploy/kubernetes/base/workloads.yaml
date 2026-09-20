@@ -1,0 +1,787 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: gateway
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gateway
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: gateway
+      containers:
+        - name: gateway
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/conduit"]
+          args: ["--addr=:8000"]
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          startupProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: subscriptions-outbox
+spec:
+  selector:
+    app.kubernetes.io/name: subscriptions-outbox
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: subscriptions-outbox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: subscriptions-outbox
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: subscriptions-outbox
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: subscriptions-outbox
+      containers:
+        - name: relay
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/outbox-relay"]
+          args: ["--config=/app/config/outbox-relay.yaml"]
+          ports:
+            - name: metrics
+              containerPort: 9100
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: OUTBOX_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: SUBSCRIPTIONS_DB_DSN
+            - {name: OUTBOX_SOURCE, value: "subscriptions"}
+            - {name: OUTBOX_METRICS_ADDR, value: ":9100"}
+            - {name: KAFKA_CLIENT_ID, value: "subscriptions-outbox"}
+          startupProbe:
+            httpGet: {path: /healthz, port: metrics}
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: posts-outbox
+spec:
+  selector:
+    app.kubernetes.io/name: posts-outbox
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: posts-outbox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: posts-outbox
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: posts-outbox
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: posts-outbox
+      containers:
+        - name: relay
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/outbox-relay"]
+          args: ["--config=/app/config/outbox-relay.yaml"]
+          ports:
+            - name: metrics
+              containerPort: 9100
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: OUTBOX_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: POSTS_DB_DSN
+            - {name: OUTBOX_SOURCE, value: "posts"}
+            - {name: OUTBOX_METRICS_ADDR, value: ":9100"}
+            - {name: KAFKA_CLIENT_ID, value: "posts-outbox"}
+          startupProbe:
+            httpGet: {path: /healthz, port: metrics}
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: profile-outbox
+spec:
+  selector:
+    app.kubernetes.io/name: profile-outbox
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profile-outbox
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: profile-outbox
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: profile-outbox
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: profile-outbox
+      containers:
+        - name: relay
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/outbox-relay"]
+          args: ["--config=/app/config/outbox-relay.yaml"]
+          ports:
+            - name: metrics
+              containerPort: 9100
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: OUTBOX_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: PROFILE_DB_DSN
+            - {name: OUTBOX_SOURCE, value: "profile"}
+            - {name: OUTBOX_METRICS_ADDR, value: ":9100"}
+            - {name: KAFKA_CLIENT_ID, value: "profile-outbox"}
+          startupProbe:
+            httpGet: {path: /healthz, port: metrics}
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+spec:
+  selector:
+    app.kubernetes.io/name: auth
+  ports:
+    - name: grpc
+      port: 9001
+      targetPort: grpc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auth
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auth
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: auth
+      containers:
+        - name: auth
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/auth"]
+          args: ["--addr=:9001"]
+          ports:
+            - name: grpc
+              containerPort: 9001
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: AUTH_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: AUTH_DB_DSN
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: AUTH_JWT_SECRET
+            - name: AUTH_PASSWORD_PEPPER
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: AUTH_PASSWORD_PEPPER
+          startupProbe:
+            grpc:
+              port: 9001
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            grpc:
+              port: 9001
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            grpc:
+              port: 9001
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: profile
+spec:
+  selector:
+    app.kubernetes.io/name: profile
+  ports:
+    - name: grpc
+      port: 9002
+      targetPort: grpc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profile
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: profile
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: profile
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: profile
+      containers:
+        - name: profile
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/profile"]
+          args: ["--addr=:9002"]
+          ports:
+            - name: grpc
+              containerPort: 9002
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: PROFILE_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: PROFILE_DB_DSN
+          startupProbe:
+            grpc:
+              port: 9002
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            grpc:
+              port: 9002
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            grpc:
+              port: 9002
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: posts
+spec:
+  selector:
+    app.kubernetes.io/name: posts
+  ports:
+    - name: grpc
+      port: 9003
+      targetPort: grpc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: posts
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: posts
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: posts
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: posts
+      containers:
+        - name: posts
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/posts"]
+          args: ["--addr=:9003"]
+          ports:
+            - name: grpc
+              containerPort: 9003
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: POSTS_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: POSTS_DB_DSN
+          startupProbe:
+            grpc:
+              port: 9003
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            grpc:
+              port: 9003
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            grpc:
+              port: 9003
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: subscriptions
+spec:
+  selector:
+    app.kubernetes.io/name: subscriptions
+  ports:
+    - name: grpc
+      port: 9004
+      targetPort: grpc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: subscriptions
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: subscriptions
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: subscriptions
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: subscriptions
+      containers:
+        - name: subscriptions
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/subscriptions"]
+          args: ["--config=/app/config/subscriptions.yaml","--addr=:9004"]
+          ports:
+            - name: grpc
+              containerPort: 9004
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: SUBSCRIPTIONS_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: SUBSCRIPTIONS_DB_DSN
+          startupProbe:
+            grpc:
+              port: 9004
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            grpc:
+              port: 9004
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            grpc:
+              port: 9004
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: comments
+spec:
+  selector:
+    app.kubernetes.io/name: comments
+  ports:
+    - name: grpc
+      port: 9005
+      targetPort: grpc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: comments
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: comments
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: comments
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: comments
+      containers:
+        - name: comments
+          image: conduit:local
+          imagePullPolicy: IfNotPresent
+          command: ["/app/comments"]
+          args: ["--config=/app/config/comments.yaml", "--addr=:9005"]
+          ports:
+            - name: grpc
+              containerPort: 9005
+          envFrom:
+            - configMapRef:
+                name: conduit-config
+          env:
+            - name: COMMENTS_DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: conduit-secrets
+                  key: COMMENTS_DB_DSN
+          startupProbe:
+            grpc:
+              port: 9005
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            grpc:
+              port: 9005
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            grpc:
+              port: 9005
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true

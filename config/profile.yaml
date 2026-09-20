@@ -1,0 +1,12 @@
+db:
+  dsn: postgres://postgres:postgres@localhost:5432/conduit_profile?sslmode=disable
+logger:
+  level: info
+  format: text
+grpc:
+  address: :9002
+redis:
+  address: localhost:6379
+  password: ""
+  db: 0
+  ttl: 10m

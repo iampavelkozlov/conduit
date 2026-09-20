@@ -10,14 +10,34 @@ import (
 )
 
 type Config struct {
-	DB     DBConfig     `yaml:"db"`
-	Logger LoggerConfig `yaml:"logger"`
-	Auth   AuthConfig   `yaml:"auth"`
-	HTTP   HTTPConfig   `yaml:"http"`
+	Logger   LoggerConfig         `yaml:"logger"`
+	HTTP     HTTPConfig           `yaml:"http"`
+	Services RemoteServicesConfig `yaml:"services"`
 }
 
-type DBConfig struct {
-	DSN string `yaml:"dsn" env:"DB_DSN"`
+type RemoteServicesConfig struct {
+	Timeout       time.Duration                 `yaml:"timeout" env:"SERVICES_GRPC_TIMEOUT" env-default:"3s"`
+	Auth          AuthGRPCClientConfig          `yaml:"auth"`
+	Profile       ProfileGRPCClientConfig       `yaml:"profile"`
+	Posts         PostsGRPCClientConfig         `yaml:"posts"`
+	Comments      CommentsGRPCClientConfig      `yaml:"comments"`
+	Subscriptions SubscriptionsGRPCClientConfig `yaml:"subscriptions"`
+}
+
+type AuthGRPCClientConfig struct {
+	Target string `yaml:"target" env:"AUTH_GRPC_TARGET"`
+}
+type ProfileGRPCClientConfig struct {
+	Target string `yaml:"target" env:"PROFILE_GRPC_TARGET"`
+}
+type PostsGRPCClientConfig struct {
+	Target string `yaml:"target" env:"POSTS_GRPC_TARGET"`
+}
+type CommentsGRPCClientConfig struct {
+	Target string `yaml:"target" env:"COMMENTS_GRPC_TARGET"`
+}
+type SubscriptionsGRPCClientConfig struct {
+	Target string `yaml:"target" env:"SUBSCRIPTIONS_GRPC_TARGET"`
 }
 
 type LoggerConfig struct {
@@ -52,18 +72,12 @@ func Load(path string) (*Config, error) {
 
 func (c *Config) Validate() error {
 	switch {
-	case strings.TrimSpace(c.DB.DSN) == "":
-		return errors.New("database DSN must not be empty")
-	case len(c.Auth.JWTSecret) < 32:
-		return errors.New("JWT secret must contain at least 32 bytes")
-	case len(c.Auth.PasswordPepper) < 16:
-		return errors.New("password pepper must contain at least 16 bytes")
-	case c.Auth.AccessTokenTTL <= 0:
-		return errors.New("access token TTL must be positive")
-	case c.Auth.RefreshTokenTTL <= c.Auth.AccessTokenTTL:
-		return errors.New("refresh token TTL must exceed access token TTL")
 	case len(c.HTTP.AllowedOrigins) == 0:
 		return errors.New("at least one allowed HTTP origin is required")
+	case c.Services.Timeout <= 0:
+		return errors.New("services gRPC timeout must be positive")
+	case strings.TrimSpace(c.Services.Auth.Target) == "" || strings.TrimSpace(c.Services.Profile.Target) == "" || strings.TrimSpace(c.Services.Posts.Target) == "" || strings.TrimSpace(c.Services.Comments.Target) == "" || strings.TrimSpace(c.Services.Subscriptions.Target) == "":
+		return errors.New("all gRPC service targets are required")
 	default:
 		return nil
 	}

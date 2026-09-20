@@ -1,0 +1,11 @@
+db:
+  dsn: postgres://postgres:postgres@localhost:5432/conduit_posts?sslmode=disable
+logger:
+  level: info
+  format: text
+grpc:
+  address: :9003
+profile:
+  target: localhost:9002
+subscriptions:
+  target: localhost:9004

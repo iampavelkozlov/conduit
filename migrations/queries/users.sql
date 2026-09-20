@@ -3,6 +3,9 @@ INSERT INTO users (id, email, username, password_hash, bio, image)
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, email, username, password_hash, bio, image, created_at, updated_at;
 
+-- name: DeleteUser :execrows
+DELETE FROM users WHERE id = $1;
+
 -- name: GetUserByID :one
 SELECT id, email, username, password_hash, bio, image, created_at, updated_at FROM users WHERE id = $1;
 

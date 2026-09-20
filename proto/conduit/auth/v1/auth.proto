@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package conduit.auth.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "conduit/internal/gen/grpc/conduit/auth/v1;authv1";
+
+// AuthService owns credentials, sessions, and token issuance.
+service AuthService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Refresh(RefreshRequest) returns (RefreshResponse);
+  rpc ValidateAccessToken(ValidateAccessTokenRequest) returns (ValidateAccessTokenResponse);
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+  rpc UpdateCredentials(UpdateCredentialsRequest) returns (UpdateCredentialsResponse);
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
+}
+
+message Account {
+  string user_id = 1;
+  string email = 2;
+}
+
+message TokenPair {
+  string access_token = 1;
+  string refresh_token = 2;
+  google.protobuf.Timestamp access_expires_at = 3;
+  google.protobuf.Timestamp refresh_expires_at = 4;
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string username = 3;
+  string idempotency_key = 4;
+}
+
+message RegisterResponse {
+  Account account = 1;
+  TokenPair tokens = 2;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  Account account = 1;
+  TokenPair tokens = 2;
+}
+
+message RefreshRequest {
+  string access_token = 1;
+  string refresh_token = 2;
+  string idempotency_key = 3;
+}
+
+message RefreshResponse {
+  Account account = 1;
+  TokenPair tokens = 2;
+}
+
+message ValidateAccessTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateAccessTokenResponse {
+  string user_id = 1;
+  string token_id = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message GetAccountRequest {
+  string user_id = 1;
+}
+
+message GetAccountResponse {
+  Account account = 1;
+}
+
+message UpdateCredentialsRequest {
+  string user_id = 1;
+  optional string email = 2;
+  optional string password = 3;
+  string idempotency_key = 4;
+}
+
+message UpdateCredentialsResponse {
+  Account account = 1;
+}
+
+message DeleteAccountRequest {
+  string user_id = 1;
+  string idempotency_key = 2;
+}
+
+message DeleteAccountResponse {
+  bool deleted = 1;
+}

@@ -1,0 +1,128 @@
+# Migration jobs are applied separately from the long-running base so schema
+# rollout remains an explicit deployment step.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-migrate
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/auth, postgres, "$(AUTH_DB_DSN)", up]
+          env:
+            - name: AUTH_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: AUTH_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: profile-migrate
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/profile, postgres, "$(PROFILE_DB_DSN)", up]
+          env:
+            - name: PROFILE_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: PROFILE_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: posts-migrate
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/posts, postgres, "$(POSTS_DB_DSN)", up]
+          env:
+            - name: POSTS_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: POSTS_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: comments-migrate
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/comments, postgres, "$(COMMENTS_DB_DSN)", up]
+          env:
+            - name: COMMENTS_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: COMMENTS_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: subscriptions-migrate
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: goose
+          image: conduit:local
+          command: [/app/goose]
+          args: [-dir, /app/migrations/subscriptions, postgres, "$(SUBSCRIPTIONS_DB_DSN)", up]
+          env:
+            - name: SUBSCRIPTIONS_DB_DSN
+              valueFrom: {secretKeyRef: {name: conduit-secrets, key: SUBSCRIPTIONS_DB_DSN}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-topics
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 6
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: deployment-job}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: kafka-topics
+          image: apache/kafka:4.1.0
+          command: [/bin/bash, -ec]
+          args:
+            - |
+              for topic in conduit.articles conduit.profiles conduit.subscriptions; do
+                /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$topic" --partitions 6 --replication-factor 1
+              done

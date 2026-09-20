@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package conduit.subscriptions.v1;
+
+option go_package = "conduit/internal/gen/grpc/conduit/subscriptions/v1;subscriptionsv1";
+
+// SubscriptionsService owns directed follower-to-followee relationships.
+service SubscriptionsService {
+  rpc Follow(FollowRequest) returns (FollowResponse);
+  rpc Unfollow(UnfollowRequest) returns (UnfollowResponse);
+  rpc IsFollowing(IsFollowingRequest) returns (IsFollowingResponse);
+  rpc ListFolloweeIDs(ListFolloweeIDsRequest) returns (ListFolloweeIDsResponse);
+  rpc ListFollowingIDs(ListFollowingIDsRequest) returns (ListFollowingIDsResponse);
+}
+
+message FollowRequest {
+  string follower_id = 1;
+  string followee_id = 2;
+  string idempotency_key = 3;
+}
+
+message FollowResponse {
+  bool created = 1;
+}
+
+message UnfollowRequest {
+  string follower_id = 1;
+  string followee_id = 2;
+  string idempotency_key = 3;
+}
+
+message UnfollowResponse {
+  bool removed = 1;
+}
+
+message IsFollowingRequest {
+  string follower_id = 1;
+  string followee_id = 2;
+}
+
+message IsFollowingResponse {
+  bool following = 1;
+}
+
+message ListFolloweeIDsRequest {
+  string follower_id = 1;
+}
+
+message ListFolloweeIDsResponse {
+  repeated string followee_ids = 1;
+}
+
+message ListFollowingIDsRequest {
+  string follower_id = 1;
+  repeated string candidate_ids = 2;
+}
+
+message ListFollowingIDsResponse {
+  repeated string following_ids = 1;
+}

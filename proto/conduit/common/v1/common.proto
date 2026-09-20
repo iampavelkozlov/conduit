@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package conduit.common.v1;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "conduit/internal/gen/grpc/conduit/common/v1;commonv1";
+
+// NullableString distinguishes an explicit null from a concrete string value.
+// Absence of the containing message means that the field was not supplied.
+message NullableString {
+  oneof kind {
+    string value = 1;
+    google.protobuf.NullValue null = 2;
+  }
+}
+
+// Page selects a bounded page using the RealWorld offset/limit convention.
+message Page {
+  uint32 limit = 1;
+  uint32 offset = 2;
+}

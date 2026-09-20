@@ -15,6 +15,8 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, arg postgres.CreateUserParams) (postgres.User, error)
 	GetUserByEmail(ctx context.Context, email string) (postgres.User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (postgres.User, error)
+	UpdateUser(ctx context.Context, arg postgres.UpdateUserParams) (postgres.User, error)
+	DeleteUser(context.Context, pgtype.UUID) (int64, error)
 }
 
 // SessionRepository is the DB interface for session operations used by the auth service.
