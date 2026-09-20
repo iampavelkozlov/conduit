@@ -45,8 +45,7 @@ Service ports `9001` through `9005` are published for `grpcurl` and debugging.
 
 ## Kubernetes
 
-`deploy/kubernetes/base` is a Kustomize base suitable for kind or k3d. It
-contains:
+`deploy/kubernetes/base` is the production-oriented Kustomize base. It contains:
 
 - three replicas for every stateless application;
 - a public `LoadBalancer` Service only for gateway;
@@ -56,16 +55,20 @@ contains:
   traffic;
 - one development PostgreSQL, Kafka KRaft broker, and Redis instance.
 
-The development base uses one `conduit:local` image containing multiple
-binaries. A production overlay can replace it with independently versioned
-service images. Build or load the local image, then render and apply:
+The base uses one `conduit:local` image containing multiple binaries. A
+production overlay can replace it with independently versioned service images.
+The supported laptop path uses the dedicated kind overlay and Make lifecycle:
 
 ```bash
-kubectl kustomize deploy/kubernetes/base
-kubectl apply -k deploy/kubernetes/base
-kubectl apply -k deploy/kubernetes/jobs
-kubectl -n conduit get pods,svc,hpa,pdb
+make k8s-check
+make k8s-status
+make k8s-down
 ```
+
+`deploy/kubernetes/overlays/kind` scales applications and relays to one replica,
+removes HPA resources, and lowers scheduler requests. The production base keeps
+its three application replicas, two relay replicas, disruption budgets and
+autoscaling policy. Use `make k8s-validate` to render and verify both variants.
 
 The jobs overlay contains one active migration Job per database plus an
 idempotent Kafka topic-initialization Job. Apply it during a rollout before
@@ -73,9 +76,9 @@ considering the corresponding application ready; each migration Job uses only
 that service's `/app/migrations/<service>` directory.
 
 The three replicas and disruption budgets assume a multi-node cluster with
-enough allocatable CPU and memory. On a small single-node kind cluster, scale
-the Deployments to one replica only for local validation; keep the checked-in
-replica counts for an actual highly available cluster.
+enough allocatable CPU and memory. Do not run the full Compose topology beside
+kind on a small Docker Desktop VM: the duplicate Kafka and PostgreSQL stacks can
+exhaust its memory.
 
 The checked-in Secret contains development defaults so the base is
 self-contained. A non-local overlay must replace it with External Secrets,
