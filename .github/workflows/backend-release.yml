@@ -1,22 +1,27 @@
-name: Release
+name: Backend Release
 
 on:
   push:
     tags:
-      - "v*"
+      - "backend-v*"
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: backend-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   verify:
-    name: Verify release source
+    name: Verify backend release source
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      major_minor: ${{ steps.version.outputs.major_minor }}
+      major: ${{ steps.version.outputs.major }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,31 +32,42 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - name: Validate semantic-version tag
+      - name: Validate backend version tag
+        id: version
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          if [[ ! "${RELEASE_TAG}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Release tag must use semantic versioning, for example v1.2.3 or v1.2.3-rc.1"
+          set -euo pipefail
+          version="${RELEASE_TAG#backend-v}"
+          if [[ "${version}" == "${RELEASE_TAG}" || ! "${version}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Backend release tag must look like backend-v1.2.3 or backend-v1.2.3-rc.1"
             exit 1
           fi
+          base_version="${version%%[-+]*}"
+          IFS=. read -r major minor _ <<< "${base_version}"
+          prerelease=false
+          if [[ "${version}" == *-* ]]; then prerelease=true; fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "major_minor=${major}.${minor}" >> "${GITHUB_OUTPUT}"
+          echo "major=${major}" >> "${GITHUB_OUTPUT}"
+          echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
 
       - name: Run quality gates
         run: make quality
 
-      - name: Verify generated files
+      - name: Verify generated backend files
         run: |
           make generate
           make arch-graph
           if [[ -n "$(git status --porcelain)" ]]; then
-            echo "Generated files are out of date"
+            echo "Generated backend files are out of date"
             git status --short
             git diff
             exit 1
           fi
 
   binaries:
-    name: Build ${{ matrix.goos }}/${{ matrix.goarch }} binary
+    name: Build backend ${{ matrix.goos }}/${{ matrix.goarch }}
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -79,20 +95,18 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - name: Build release archive
+      - name: Build backend archive
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
         run: |
           set -euo pipefail
-          archive="conduit-${RELEASE_TAG}-${GOOS}-${GOARCH}"
+          archive="conduit-api-v${RELEASE_VERSION}-${GOOS}-${GOARCH}"
           mkdir -p "dist/${archive}"
           binary="conduit"
-          if [[ "${GOOS}" == "windows" ]]; then
-            binary="conduit.exe"
-          fi
+          if [[ "${GOOS}" == "windows" ]]; then binary="conduit.exe"; fi
           go build -trimpath -ldflags="-s -w" -o "dist/${archive}/${binary}" ./cmd/server
           if [[ "${GOOS}" == "windows" ]]; then
             (cd dist && zip -q -r "${archive}.zip" "${archive}")
@@ -101,17 +115,17 @@ jobs:
           fi
           rm -rf "dist/${archive}"
 
-      - name: Upload release archive
+      - name: Upload backend archive
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: backend-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*
           if-no-files-found: error
           retention-days: 1
 
   github-release:
-    name: Publish GitHub Release
-    needs: binaries
+    name: Publish backend GitHub Release
+    needs: [verify, binaries]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -120,10 +134,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Download release archives
+      - name: Download backend archives
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          pattern: binary-*
+          pattern: backend-*
           path: dist
           merge-multiple: true
 
@@ -131,25 +145,25 @@ jobs:
         working-directory: dist
         run: sha256sum * > SHA256SUMS
 
-      - name: Publish release
+      - name: Publish backend release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
         run: |
           set -euo pipefail
           release_flags=()
-          if [[ "${RELEASE_TAG}" == *-* ]]; then
-            release_flags+=(--prerelease)
-          fi
+          if [[ "${PRERELEASE}" == "true" ]]; then release_flags+=(--prerelease); fi
           gh release create "${RELEASE_TAG}" dist/* \
             --verify-tag \
             --generate-notes \
-            --title "${RELEASE_TAG}" \
+            --title "Backend v${RELEASE_VERSION}" \
             "${release_flags[@]}"
 
   container:
-    name: Publish multi-architecture container
-    needs: github-release
+    name: Publish backend container
+    needs: [verify, github-release]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -174,32 +188,33 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate image metadata
+      - name: Generate backend image metadata
         id: metadata
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository }}-api
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=${{ needs.verify.outputs.version }}
+            type=raw,value=${{ needs.verify.outputs.major_minor }},enable=${{ needs.verify.outputs.prerelease == 'false' }}
+            type=raw,value=${{ needs.verify.outputs.major }},enable=${{ needs.verify.outputs.prerelease == 'false' }}
+            type=raw,value=latest,enable=${{ needs.verify.outputs.prerelease == 'false' }}
 
-      - name: Build and push image
+      - name: Build and push backend image
         id: image
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
+          target: api-runtime
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
-      - name: Attest image provenance
+      - name: Attest backend image provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
-          subject-name: ghcr.io/${{ github.repository }}
+          subject-name: ghcr.io/${{ github.repository }}-api
           subject-digest: ${{ steps.image.outputs.digest }}
           push-to-registry: true

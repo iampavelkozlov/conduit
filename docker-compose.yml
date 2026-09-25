@@ -1,5 +1,9 @@
 x-conduit-image: &conduit-image
-  image: ${CONDUIT_IMAGE:-conduit:local}
+  image: ${CONDUIT_API_IMAGE:-conduit-api:local}
+  build:
+    context: .
+    target: api-runtime
+  pull_policy: ${CONDUIT_API_PULL_POLICY:-build}
 
 services:
   postgres:
@@ -24,7 +28,6 @@ services:
 
   migrate:
     <<: *conduit-image
-    pull_policy: never
     entrypoint: ["/app/goose"]
     command: ["up"]
     environment:
@@ -38,9 +41,6 @@ services:
 
   conduit:
     <<: *conduit-image
-    build:
-      context: .
-    pull_policy: ${CONDUIT_PULL_POLICY:-build}
     restart: unless-stopped
     environment:
       DB_DSN: postgres://postgres:postgres@postgres:5432/conduit?sslmode=disable
@@ -58,9 +58,11 @@ services:
         condition: service_completed_successfully
 
   frontend:
+    image: ${CONDUIT_FRONTEND_IMAGE:-conduit-frontend:local}
     build:
       context: .
       target: frontend-runtime
+    pull_policy: ${CONDUIT_FRONTEND_PULL_POLICY:-build}
     restart: unless-stopped
     ports:
       - "3000:3000"

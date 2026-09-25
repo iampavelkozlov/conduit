@@ -76,10 +76,11 @@ docker-compose up -d
 
 The API is available under `http://localhost:8000/api`; Prometheus metrics are
 available at `http://localhost:8000/metrics`. The Vue application is available
-at `http://localhost:3000`. Compose pulls
-`ghcr.io/iampavelkozlov/conduit:latest`, waits for PostgreSQL, applies all Goose
-migrations, and then starts the API. Override `CONDUIT_IMAGE` to run a pinned
-version. For a locally built image, also set `CONDUIT_PULL_POLICY=never`.
+at `http://localhost:3000`. Compose waits for PostgreSQL, applies all Goose
+migrations, and then starts the API and frontend. Override `CONDUIT_API_IMAGE`
+and `CONDUIT_FRONTEND_IMAGE` to run published or pinned images. Their pull
+policies can be controlled independently with `CONDUIT_API_PULL_POLICY` and
+`CONDUIT_FRONTEND_PULL_POLICY`.
 
 Runtime settings are loaded from `config/config.yaml` and can be overridden by
 environment variables:
@@ -101,19 +102,22 @@ production.
 
 ## Releases
 
-Pushing a semantic-version tag publishes release binaries and a multi-platform
-container image:
+Backend and frontend are versioned independently:
 
 ```bash
-git tag -a v1.0.0 -m "v1.0.0"
-git push origin v1.0.0
+git tag -a backend-v1.0.0 -m "backend-v1.0.0"
+git push origin backend-v1.0.0
+
+git tag -a frontend-v1.0.0 -m "frontend-v1.0.0"
+git push origin frontend-v1.0.0
 ```
 
-The release workflow verifies quality and generated files, creates Linux and
-macOS archives for amd64/arm64, creates a Windows amd64 archive, publishes a
-`SHA256SUMS` file, and pushes Linux amd64/arm64 images to GitHub Container
-Registry. Stable versions receive version, major/minor, major, and `latest`
-tags; prereleases do not move `latest`.
+Backend tags publish Go binaries, checksums, a GitHub Release, and the
+multi-platform image `ghcr.io/iampavelkozlov/conduit-api`. Frontend tags publish
+the static bundle, checksums, a separate GitHub Release, and the multi-platform
+image `ghcr.io/iampavelkozlov/conduit-frontend`. Stable versions receive
+version, major/minor, major, and `latest` image tags; prereleases do not move
+`latest`.
 
 The GHCR package must be public for anonymous Compose pulls. If it remains
 private, authenticate once with `docker login ghcr.io` before starting the
