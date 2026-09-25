@@ -71,15 +71,20 @@ make arch-graph
 Requirements: Go, Docker with Compose, and `make`.
 
 ```bash
-docker-compose up -d
+cp .env.example .env
+# Replace every change-me value in .env, then start the stack.
+docker compose up -d --build
 ```
 
-The API is available under `http://localhost:8000/api`; Prometheus metrics are
-available at `http://localhost:8000/metrics`. The Vue application is available
-at `http://localhost:3000`. Compose waits for PostgreSQL, applies all Goose
-migrations, and then starts the API and frontend. Override `CONDUIT_API_IMAGE`
-and `CONDUIT_FRONTEND_IMAGE` to run published or pinned images. Their pull
-policies can be controlled independently with `CONDUIT_API_PULL_POLICY` and
+The Vue application and API are available through nginx at
+`https://<PUBLIC_HOST>`. Port 80 redirects to HTTPS. On its first start, the
+frontend container creates a local certificate authority and a server
+certificate in `.data/certs`; install `.data/certs/ca.crt` as a trusted root on
+client devices. PostgreSQL and the Go API are only reachable within the Compose
+network. Compose waits for PostgreSQL, applies all Goose migrations, and then
+starts the API and frontend. Override `CONDUIT_API_IMAGE` and
+`CONDUIT_FRONTEND_IMAGE` to run published or pinned images. Their pull policies
+can be controlled independently with `CONDUIT_API_PULL_POLICY` and
 `CONDUIT_FRONTEND_PULL_POLICY`.
 
 Runtime settings are loaded from `config/config.yaml` and can be overridden by
@@ -95,6 +100,8 @@ environment variables:
 | `AUTH_ACCESS_TOKEN_TTL` | Access-token lifetime |
 | `AUTH_REFRESH_TOKEN_TTL` | Refresh-token lifetime |
 | `HTTP_ALLOWED_ORIGINS` | Comma-separated CORS allowlist |
+| `PUBLIC_HOST` | IP address or hostname included in the generated TLS certificate |
+| `CONDUIT_BIND_ADDRESS` | Host interface used for ports 80 and 443 |
 
 The checked-in configuration is intended for local development. Supply unique
 secrets, TLS-enabled database connectivity, and an explicit CORS allowlist in

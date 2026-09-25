@@ -32,10 +32,15 @@ RUN npm run build
 
 FROM nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de AS frontend-runtime
 
+RUN apk add --no-cache openssl
+
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/docker-entrypoint.d /docker-entrypoint.d
 COPY --from=frontend-builder /src/frontend/dist /usr/share/nginx/html
 
-EXPOSE 3000
+RUN chmod +x /docker-entrypoint.d/10-generate-certificates.sh
+
+EXPOSE 80 443
 
 FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS goose-builder
 
