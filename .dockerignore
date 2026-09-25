@@ -1,9 +1,11 @@
 .git
 .github
+.artifacts
 .data
 .gocache
 .gomodcache
 .idea
+.tools
 .vscode
 .DS_Store
 .env
@@ -13,6 +15,7 @@ coverage.html
 docs
 index.html
 bin
+frontend/dist
+frontend/node_modules
 *.log
 *.test
-

@@ -1,0 +1,43 @@
+<div class="home-page">
+  <section class="banner">
+    <div class="container">
+      <h1>conduit</h1>
+      <p>A place to share your knowledge.</p>
+    </div>
+  </section>
+  <div class="container page page-grid">
+    <section>
+      <nav class="tabs" aria-label="Article feeds">
+        <button v-if="auth.isAuthenticated" class="tab button-tab" :class="{ active: following }" type="button" @click="openFeed('following')">
+          Your Feed
+        </button>
+        <button class="tab button-tab" :class="{ active: !following && !activeTag }" type="button" @click="openFeed('global')">
+          Global Feed
+        </button>
+        <span v-if="activeTag" class="tab active"># {{ activeTag }}</span>
+      </nav>
+      <ErrorMessages :messages="errors" />
+      <ArticleList :articles="articles" :loading="loading" @updated="replaceArticle" />
+      <nav v-if="pageCount > 1" class="pagination" aria-label="Article pages">
+        <RouterLink
+          v-for="number in pageCount"
+          :key="number"
+          class="page-link"
+          :class="{ active: number === page }"
+          :to="{ name: 'home', query: { ...$route.query, page: number } }"
+        >
+          {{ number }}
+        </RouterLink>
+      </nav>
+    </section>
+    <aside class="sidebar">
+      <p>Popular Tags</p>
+      <div class="tag-list">
+        <RouterLink v-for="tag in tags" :key="tag" class="tag-pill tag-default" :to="{ name: 'home', query: { tag } }">
+          {{ tag }}
+        </RouterLink>
+        <span v-if="!tags.length && !loading" class="muted">No tags yet.</span>
+      </div>
+    </aside>
+  </div>
+</div>

@@ -45,6 +45,7 @@ gate prevents total coverage from falling below 95.1%.
 - Prometheus metrics
 - Goose migrations
 - Hurl integration tests
+- Vue 3 SPA with Vue Router, Pinia, and a generated OpenAPI client
 
 ## Architecture
 
@@ -74,7 +75,8 @@ docker-compose up -d
 ```
 
 The API is available under `http://localhost:8000/api`; Prometheus metrics are
-available at `http://localhost:8000/metrics`. Compose pulls
+available at `http://localhost:8000/metrics`. The Vue application is available
+at `http://localhost:3000`. Compose pulls
 `ghcr.io/iampavelkozlov/conduit:latest`, waits for PostgreSQL, applies all Goose
 migrations, and then starts the API. Override `CONDUIT_IMAGE` to run a pinned
 version. For a locally built image, also set `CONDUIT_PULL_POLICY=never`.
@@ -133,6 +135,18 @@ port `8000`:
 ```bash
 bash apitests/run-hurl-tests.sh
 ```
+
+Run the frontend locally with hot reload (the dev server proxies API requests
+to `localhost:8000`):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The TypeScript API types are generated from `api/open-api.yml` automatically
+during `npm run build`. Run `npm run generate:api` to refresh them manually.
 
 ## Observability
 

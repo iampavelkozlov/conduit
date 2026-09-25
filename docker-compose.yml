@@ -58,16 +58,10 @@ services:
         condition: service_completed_successfully
 
   frontend:
-    <<: *conduit-image
-    pull_policy: never
-    entrypoint: ["/app/frontend"]
-    command: ["--config=/app/config/frontend.yaml"]
+    build:
+      context: .
+      target: frontend-runtime
     restart: unless-stopped
-    environment:
-      FRONTEND_API_URL: http://conduit:8000/api
-      FRONTEND_LOG_LEVEL: ${FRONTEND_LOG_LEVEL:-info}
-      FRONTEND_LOG_FORMAT: ${FRONTEND_LOG_FORMAT:-json}
-      FRONTEND_COOKIE_SECURE: ${FRONTEND_COOKIE_SECURE:-false}
     ports:
       - "3000:3000"
     depends_on:

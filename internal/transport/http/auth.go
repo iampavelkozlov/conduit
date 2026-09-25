@@ -51,7 +51,7 @@ func (s Server) Login(ctx context.Context, request api.LoginRequestObject) (api.
 	}, nil
 }
 
-// NewRefreshHandler returns the private SSR refresh endpoint. It deliberately
+// NewRefreshHandler returns the private frontend refresh endpoint. It deliberately
 // lives outside the canonical OpenAPI router so the RealWorld contract remains
 // unchanged.
 func NewRefreshHandler(svc applicationService) http.Handler {

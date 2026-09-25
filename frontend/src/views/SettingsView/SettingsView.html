@@ -1,0 +1,14 @@
+<section class="center-column settings-page">
+  <h1>Your Settings</h1>
+  <ErrorMessages :messages="errors" />
+  <form @submit.prevent="submit">
+    <div class="form-group"><input v-model="image" class="form-control" type="url" placeholder="URL of profile picture" /></div>
+    <div class="form-group"><input v-model="username" class="form-control form-control-lg" autocomplete="username" placeholder="Your Name" required /></div>
+    <div class="form-group"><textarea v-model="bio" class="form-control form-control-lg" rows="6" placeholder="Short bio about you"></textarea></div>
+    <div class="form-group"><input v-model="email" class="form-control form-control-lg" type="email" autocomplete="email" placeholder="Email" required /></div>
+    <div class="form-group"><input v-model="password" class="form-control form-control-lg" type="password" autocomplete="new-password" placeholder="New Password" /></div>
+    <button class="btn btn-lg btn-primary pull-right" type="submit" :disabled="submitting">Update Settings</button>
+  </form>
+  <hr />
+  <button class="btn btn-outline-danger" type="button" @click="logout">Or click here to logout.</button>
+</section>

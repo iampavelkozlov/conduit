@@ -1,0 +1,9 @@
+.user-info { padding: 2rem 0 1rem; background: #f3f3f3; text-align: center; }
+.profile-content { position: relative; }
+.user-image { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; }
+.user-info h1 { margin: .75rem 0 .25rem; font-size: 1.5rem; }
+.user-info p { margin-bottom: .75rem; color: #aaa; }
+.action-button { position: absolute; right: 0; bottom: 0; }
+.profile-articles { padding: 1.5rem 0; }
+.narrow { width: min(920px, calc(100% - 32px)); }
+@media (max-width: 620px) { .action-button { position: static; } }

@@ -1,0 +1,14 @@
+<div class="actions">
+  <template v-if="ownArticle">
+    <RouterLink class="btn btn-sm btn-outline-secondary" :to="{ name: 'editor', params: { slug: article.slug } }">✎ Edit Article</RouterLink>
+    <button class="btn btn-sm btn-outline-danger" type="button" :disabled="busy" @click="removeArticle">⌫ Delete Article</button>
+  </template>
+  <template v-else>
+    <button class="btn btn-sm btn-outline-secondary" type="button" :disabled="busy" @click="toggleFollow">
+      + {{ article.author.following ? 'Unfollow' : 'Follow' }} {{ article.author.username }}
+    </button>
+    <button class="btn btn-sm" :class="article.favorited ? 'btn-primary' : 'btn-outline-primary'" type="button" :disabled="busy" @click="toggleFavorite">
+      ♥ {{ article.favorited ? 'Unfavorite' : 'Favorite' }} Article ({{ article.favoritesCount }})
+    </button>
+  </template>
+</div>

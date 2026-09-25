@@ -1,0 +1,30 @@
+<article class="article-preview">
+  <div class="article-meta">
+    <RouterLink :to="{ name: 'profile', params: { username: article.author.username } }">
+      <img :src="avatarUrl(article.author.image)" alt="" />
+    </RouterLink>
+    <div class="author-info">
+      <RouterLink class="author" :to="{ name: 'profile', params: { username: article.author.username } }">
+        {{ article.author.username }}
+      </RouterLink>
+      <time :datetime="article.createdAt">{{ formatDate(article.createdAt) }}</time>
+    </div>
+    <button
+      class="btn btn-sm favorite-button"
+      :class="article.favorited ? 'btn-primary' : 'btn-outline-primary'"
+      type="button"
+      :disabled="busy"
+      @click="toggleFavorite"
+    >
+      ♥ {{ article.favoritesCount }}
+    </button>
+  </div>
+  <RouterLink class="preview-link" :to="{ name: 'article', params: { slug: article.slug } }">
+    <h2>{{ article.title }}</h2>
+    <p>{{ article.description }}</p>
+    <span>Read more...</span>
+    <ul class="tag-list">
+      <li v-for="tag in article.tagList" :key="tag" class="tag-pill tag-outline">{{ tag }}</li>
+    </ul>
+  </RouterLink>
+</article>

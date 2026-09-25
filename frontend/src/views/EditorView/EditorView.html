@@ -1,0 +1,13 @@
+<section class="wide-column editor-page">
+  <ErrorMessages :messages="errors" />
+  <p v-if="loading" class="loading">Loading article...</p>
+  <form v-else @submit.prevent="submit">
+    <div class="form-group"><input v-model="title" class="form-control form-control-lg" placeholder="Article Title" required /></div>
+    <div class="form-group"><input v-model="description" class="form-control" placeholder="What's this article about?" required /></div>
+    <div class="form-group"><textarea v-model="body" class="form-control" rows="10" placeholder="Write your article" required></textarea></div>
+    <div class="form-group"><input v-model="tags" class="form-control" placeholder="Enter comma-separated tags" /></div>
+    <button class="btn btn-lg btn-primary pull-right" type="submit" :disabled="submitting">
+      {{ editing ? 'Update Article' : 'Publish Article' }}
+    </button>
+  </form>
+</section>

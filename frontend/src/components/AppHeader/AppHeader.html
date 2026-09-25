@@ -1,0 +1,20 @@
+<header class="header">
+  <nav class="container navbar" aria-label="Main navigation">
+    <RouterLink class="brand" :to="{ name: 'home' }">conduit</RouterLink>
+    <div class="nav-links">
+      <RouterLink class="nav-link" :to="{ name: 'home' }">Home</RouterLink>
+      <template v-if="user">
+        <RouterLink class="nav-link" :to="{ name: 'editor' }">✎ New Article</RouterLink>
+        <RouterLink class="nav-link" :to="{ name: 'settings' }">⚙ Settings</RouterLink>
+        <RouterLink class="nav-link profile-link" :to="{ name: 'profile', params: { username: user.username } }">
+          <img :src="avatarUrl(user.image)" alt="" />{{ user.username }}
+        </RouterLink>
+        <button class="nav-link logout" type="button" @click="logout">Log out</button>
+      </template>
+      <template v-else>
+        <RouterLink class="nav-link" :to="{ name: 'login' }">Sign in</RouterLink>
+        <RouterLink class="nav-link" :to="{ name: 'register' }">Sign up</RouterLink>
+      </template>
+    </div>
+  </nav>
+</header>

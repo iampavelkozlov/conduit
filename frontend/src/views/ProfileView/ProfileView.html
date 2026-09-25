@@ -1,0 +1,23 @@
+<div class="profile-page">
+  <section v-if="profile" class="user-info">
+    <div class="container profile-content">
+      <img class="user-image" :src="avatarUrl(profile.image)" alt="" />
+      <h1>{{ profile.username }}</h1>
+      <p>{{ profile.bio }}</p>
+      <RouterLink v-if="ownProfile" class="btn btn-sm btn-outline-secondary action-button" :to="{ name: 'settings' }">⚙ Edit Profile Settings</RouterLink>
+      <button v-else class="btn btn-sm btn-outline-secondary action-button" type="button" :disabled="followingBusy" @click="toggleFollow">
+        + {{ profile.following ? 'Unfollow' : 'Follow' }} {{ profile.username }}
+      </button>
+    </div>
+  </section>
+  <section class="profile-articles">
+    <div class="container narrow">
+      <ErrorMessages :messages="errors" />
+      <nav class="tabs" aria-label="Profile articles">
+        <RouterLink class="tab" :class="{ active: !favorites }" :to="{ name: 'profile', params: { username } }">My Articles</RouterLink>
+        <RouterLink class="tab" :class="{ active: favorites }" :to="{ name: 'profile', params: { username }, query: { tab: 'favorites' } }">Favorited Articles</RouterLink>
+      </nav>
+      <ArticleList :articles="articles" :loading="loading" @updated="replaceArticle" />
+    </div>
+  </section>
+</div>

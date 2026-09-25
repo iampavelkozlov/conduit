@@ -1,0 +1,42 @@
+<div class="article-page">
+  <p v-if="loading" class="container loading">Loading article...</p>
+  <ErrorMessages v-else-if="!article" class="container" :messages="errors" />
+  <template v-else>
+    <section class="article-banner">
+      <div class="container">
+        <h1>{{ article.title }}</h1>
+        <div class="article-meta">
+          <RouterLink :to="{ name: 'profile', params: { username: article.author.username } }"><img :src="avatarUrl(article.author.image)" alt="" /></RouterLink>
+          <div class="info">
+            <RouterLink class="author" :to="{ name: 'profile', params: { username: article.author.username } }">{{ article.author.username }}</RouterLink>
+            <time :datetime="article.createdAt">{{ formatDate(article.createdAt) }}</time>
+          </div>
+          <ArticleActions :article="article" @updated="article = $event" @failed="setErrors" />
+        </div>
+      </div>
+    </section>
+    <article class="container article-content">
+      <p class="body">{{ article.body }}</p>
+      <ul class="tag-list"><li v-for="tag in article.tagList" :key="tag" class="tag-pill tag-outline">{{ tag }}</li></ul>
+      <hr />
+      <div class="bottom-actions"><ArticleActions :article="article" @updated="article = $event" @failed="setErrors" /></div>
+      <ErrorMessages :messages="errors" />
+      <section class="comments">
+        <form v-if="auth.user" class="comment-form" @submit.prevent="submitComment">
+          <textarea v-model="commentBody" class="form-control" rows="3" placeholder="Write a comment..." required></textarea>
+          <footer><img :src="avatarUrl(auth.user.image)" alt="" /><button class="btn btn-sm btn-primary" type="submit" :disabled="submittingComment">Post Comment</button></footer>
+        </form>
+        <p v-else><RouterLink :to="{ name: 'login' }">Sign in</RouterLink> or <RouterLink :to="{ name: 'register' }">sign up</RouterLink> to add comments.</p>
+        <article v-for="comment in comments" :key="comment.id" class="comment-card">
+          <p>{{ comment.body }}</p>
+          <footer>
+            <RouterLink :to="{ name: 'profile', params: { username: comment.author.username } }"><img :src="avatarUrl(comment.author.image)" alt="" />{{ comment.author.username }}</RouterLink>
+            <time :datetime="comment.createdAt">{{ formatDate(comment.createdAt) }}</time>
+            <button v-if="auth.user?.username === comment.author.username" class="delete-comment" type="button" aria-label="Delete comment" @click="removeComment(comment)">⌫</button>
+          </footer>
+        </article>
+        <p v-if="comments.length === 0" class="muted">No comments yet.</p>
+      </section>
+    </article>
+  </template>
+</div>
