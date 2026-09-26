@@ -1,6 +1,10 @@
 import { computed, defineComponent, ref, type PropType } from 'vue'
 import { useRouter } from 'vue-router'
+import { HeartIcon, PenLineIcon, Trash2Icon, UserMinusIcon, UserPlusIcon } from '@lucide/vue'
 
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { deleteArticle, setFavorite, setFollowing } from '../../api/conduit'
 import { errorMessages } from '../../api/errors'
 import type { Article } from '../../api/types'
@@ -8,6 +12,7 @@ import { useAuthStore } from '../../stores/auth'
 
 export default defineComponent({
   name: 'ArticleActions',
+  components: { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, Button, HeartIcon, PenLineIcon, Spinner, Trash2Icon, UserMinusIcon, UserPlusIcon },
   props: {
     article: { type: Object as PropType<Article>, required: true },
   },
@@ -53,7 +58,6 @@ export default defineComponent({
     }
 
     async function removeArticle() {
-      if (!window.confirm('Delete this article?')) return
       busy.value = true
       try {
         await deleteArticle(props.article.slug)

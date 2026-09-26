@@ -4,6 +4,10 @@ export function avatarUrl(image: string | null | undefined) {
   return image || defaultAvatar
 }
 
+export function initials(value: string) {
+  return value.trim().slice(0, 2).toUpperCase() || 'CN'
+}
+
 export function formatDate(value: string) {
   return new Intl.DateTimeFormat('en', {
     year: 'numeric',

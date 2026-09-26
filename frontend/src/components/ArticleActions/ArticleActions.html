@@ -1,14 +1,34 @@
-<div class="actions">
+<div class="flex flex-wrap gap-2">
   <template v-if="ownArticle">
-    <RouterLink class="btn btn-sm btn-outline-secondary" :to="{ name: 'editor', params: { slug: article.slug } }">✎ Edit Article</RouterLink>
-    <button class="btn btn-sm btn-outline-danger" type="button" :disabled="busy" @click="removeArticle">⌫ Delete Article</button>
+    <Button variant="outline" size="sm" as-child>
+      <RouterLink :to="{ name: 'editor', params: { slug: article.slug } }"><PenLineIcon data-icon="inline-start" />Edit</RouterLink>
+    </Button>
+    <AlertDialog>
+      <AlertDialogTrigger as-child>
+        <Button variant="destructive" size="sm" type="button" :disabled="busy"><Trash2Icon data-icon="inline-start" />Delete</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this article?</AlertDialogTitle>
+          <AlertDialogDescription>This action cannot be undone. The article and its comments will be permanently removed.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" @click="removeArticle"><Trash2Icon data-icon="inline-start" />Delete article</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </template>
   <template v-else>
-    <button class="btn btn-sm btn-outline-secondary" type="button" :disabled="busy" @click="toggleFollow">
-      + {{ article.author.following ? 'Unfollow' : 'Follow' }} {{ article.author.username }}
-    </button>
-    <button class="btn btn-sm" :class="article.favorited ? 'btn-primary' : 'btn-outline-primary'" type="button" :disabled="busy" @click="toggleFavorite">
-      ♥ {{ article.favorited ? 'Unfavorite' : 'Favorite' }} Article ({{ article.favoritesCount }})
-    </button>
+    <Button variant="outline" size="sm" type="button" :disabled="busy" @click="toggleFollow">
+      <Spinner v-if="busy" data-icon="inline-start" />
+      <UserMinusIcon v-else-if="article.author.following" data-icon="inline-start" />
+      <UserPlusIcon v-else data-icon="inline-start" />
+      {{ article.author.following ? 'Unfollow' : 'Follow' }}
+    </Button>
+    <Button :variant="article.favorited ? 'default' : 'secondary'" size="sm" type="button" :disabled="busy" @click="toggleFavorite">
+      <HeartIcon data-icon="inline-start" />
+      {{ article.favorited ? 'Favorited' : 'Favorite' }} · {{ article.favoritesCount }}
+    </Button>
   </template>
 </div>

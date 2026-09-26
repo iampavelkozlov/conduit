@@ -1,42 +1,110 @@
-<div class="article-page">
-  <p v-if="loading" class="container loading">Loading article...</p>
-  <ErrorMessages v-else-if="!article" class="container" :messages="errors" />
-  <template v-else>
-    <section class="article-banner">
-      <div class="container">
-        <h1>{{ article.title }}</h1>
-        <div class="article-meta">
-          <RouterLink :to="{ name: 'profile', params: { username: article.author.username } }"><img :src="avatarUrl(article.author.image)" alt="" /></RouterLink>
-          <div class="info">
-            <RouterLink class="author" :to="{ name: 'profile', params: { username: article.author.username } }">{{ article.author.username }}</RouterLink>
-            <time :datetime="article.createdAt">{{ formatDate(article.createdAt) }}</time>
+<div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+  <div v-if="loading" class="flex flex-col gap-6">
+    <Card>
+      <CardHeader><Skeleton class="h-10 w-3/4" /><div class="flex items-center gap-3"><Skeleton class="size-10 rounded-full" /><Skeleton class="h-4 w-32" /></div></CardHeader>
+      <CardContent class="flex flex-col gap-3"><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-full" /><Skeleton class="h-4 w-2/3" /></CardContent>
+    </Card>
+  </div>
+  <ErrorMessages v-else-if="!article" :messages="errors" />
+  <div v-else class="flex flex-col gap-8">
+    <Card>
+      <CardHeader class="gap-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="flex min-w-0 flex-1 flex-col gap-3">
+            <CardTitle>{{ article.title }}</CardTitle>
+            <CardDescription>{{ article.description }}</CardDescription>
           </div>
           <ArticleActions :article="article" @updated="article = $event" @failed="setErrors" />
         </div>
-      </div>
-    </section>
-    <article class="container article-content">
-      <p class="body">{{ article.body }}</p>
-      <ul class="tag-list"><li v-for="tag in article.tagList" :key="tag" class="tag-pill tag-outline">{{ tag }}</li></ul>
-      <hr />
-      <div class="bottom-actions"><ArticleActions :article="article" @updated="article = $event" @failed="setErrors" /></div>
-      <ErrorMessages :messages="errors" />
-      <section class="comments">
-        <form v-if="auth.user" class="comment-form" @submit.prevent="submitComment">
-          <textarea v-model="commentBody" class="form-control" rows="3" placeholder="Write a comment..." required></textarea>
-          <footer><img :src="avatarUrl(auth.user.image)" alt="" /><button class="btn btn-sm btn-primary" type="submit" :disabled="submittingComment">Post Comment</button></footer>
+        <div class="flex items-center gap-3">
+          <RouterLink :to="{ name: 'profile', params: { username: article.author.username } }">
+            <Avatar>
+              <AvatarImage :src="avatarUrl(article.author.image)" :alt="article.author.username" />
+              <AvatarFallback>{{ initials(article.author.username) }}</AvatarFallback>
+            </Avatar>
+          </RouterLink>
+          <div class="flex flex-col">
+            <RouterLink class="font-medium text-foreground hover:text-primary" :to="{ name: 'profile', params: { username: article.author.username } }">{{ article.author.username }}</RouterLink>
+            <time class="text-sm text-muted-foreground" :datetime="article.createdAt">{{ formatDate(article.createdAt) }}</time>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p class="whitespace-pre-wrap text-base leading-8">{{ article.body }}</p>
+      </CardContent>
+      <CardFooter class="flex-wrap gap-2">
+        <Badge v-for="tag in article.tagList" :key="tag" variant="secondary">{{ tag }}</Badge>
+      </CardFooter>
+    </Card>
+
+    <ErrorMessages :messages="errors" />
+
+    <section class="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <div class="flex items-center gap-2"><MessageSquareIcon class="size-5 text-primary" aria-hidden="true" /><h2 class="text-xl font-semibold">Conversation</h2></div>
+
+      <Card v-if="auth.user">
+        <form @submit.prevent="submitComment">
+          <CardHeader>
+            <div class="flex items-center gap-3">
+              <Avatar>
+                <AvatarImage :src="avatarUrl(auth.user.image)" :alt="auth.user.username" />
+                <AvatarFallback>{{ initials(auth.user.username) }}</AvatarFallback>
+              </Avatar>
+              <div><CardTitle>Add a comment</CardTitle><CardDescription>Share a constructive thought with the author.</CardDescription></div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <Field>
+                <FieldLabel class="sr-only" for="comment-body">Comment</FieldLabel>
+                <Textarea id="comment-body" v-model="commentBody" rows="4" placeholder="Write a comment..." required />
+              </Field>
+            </FieldGroup>
+          </CardContent>
+          <CardFooter class="justify-end">
+            <Button type="submit" :disabled="submittingComment">
+              <Spinner v-if="submittingComment" data-icon="inline-start" />
+              <SendIcon v-else data-icon="inline-start" />
+              {{ submittingComment ? 'Posting...' : 'Post comment' }}
+            </Button>
+          </CardFooter>
         </form>
-        <p v-else><RouterLink :to="{ name: 'login' }">Sign in</RouterLink> or <RouterLink :to="{ name: 'register' }">sign up</RouterLink> to add comments.</p>
-        <article v-for="comment in comments" :key="comment.id" class="comment-card">
-          <p>{{ comment.body }}</p>
-          <footer>
-            <RouterLink :to="{ name: 'profile', params: { username: comment.author.username } }"><img :src="avatarUrl(comment.author.image)" alt="" />{{ comment.author.username }}</RouterLink>
-            <time :datetime="comment.createdAt">{{ formatDate(comment.createdAt) }}</time>
-            <button v-if="auth.user?.username === comment.author.username" class="delete-comment" type="button" aria-label="Delete comment" @click="removeComment(comment)">⌫</button>
-          </footer>
-        </article>
-        <p v-if="comments.length === 0" class="muted">No comments yet.</p>
-      </section>
-    </article>
-  </template>
+      </Card>
+      <Card v-else>
+        <CardHeader><CardTitle>Join the conversation</CardTitle><CardDescription>Sign in or create an account to add a comment.</CardDescription></CardHeader>
+        <CardFooter class="gap-2"><Button as-child><RouterLink :to="{ name: 'login' }">Sign in</RouterLink></Button><Button variant="outline" as-child><RouterLink :to="{ name: 'register' }">Sign up</RouterLink></Button></CardFooter>
+      </Card>
+
+      <Card v-for="comment in comments" :key="comment.id">
+        <CardHeader>
+          <div class="flex items-center gap-3">
+            <RouterLink :to="{ name: 'profile', params: { username: comment.author.username } }">
+              <Avatar>
+                <AvatarImage :src="avatarUrl(comment.author.image)" :alt="comment.author.username" />
+                <AvatarFallback>{{ initials(comment.author.username) }}</AvatarFallback>
+              </Avatar>
+            </RouterLink>
+            <div class="flex flex-col">
+              <RouterLink class="font-medium text-foreground hover:text-primary" :to="{ name: 'profile', params: { username: comment.author.username } }">{{ comment.author.username }}</RouterLink>
+              <time class="text-sm text-muted-foreground" :datetime="comment.createdAt">{{ formatDate(comment.createdAt) }}</time>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent><p class="whitespace-pre-wrap leading-7">{{ comment.body }}</p></CardContent>
+        <CardFooter v-if="auth.user?.username === comment.author.username" class="justify-end">
+          <AlertDialog>
+            <AlertDialogTrigger as-child><Button variant="ghost" size="sm"><Trash2Icon data-icon="inline-start" />Delete</Button></AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader><AlertDialogTitle>Delete this comment?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+              <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction variant="destructive" @click="removeComment(comment)">Delete comment</AlertDialogAction></AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardFooter>
+      </Card>
+
+      <Empty v-if="comments.length === 0" class="rounded-xl border bg-card">
+        <EmptyHeader><EmptyMedia variant="icon"><MessageSquareIcon /></EmptyMedia><EmptyTitle>No comments yet</EmptyTitle><EmptyDescription>Start a thoughtful conversation about this article.</EmptyDescription></EmptyHeader>
+      </Empty>
+    </section>
+  </div>
 </div>

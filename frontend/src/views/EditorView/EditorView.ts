@@ -1,6 +1,14 @@
 import { computed, defineComponent, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { SendIcon } from '@lucide/vue'
 
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
+import { Textarea } from '@/components/ui/textarea'
 import { createArticle, getArticle, updateArticle } from '../../api/conduit'
 import { errorMessages } from '../../api/errors'
 import ErrorMessages from '../../components/ErrorMessages/ErrorMessages.vue'
@@ -9,7 +17,7 @@ import { splitTags } from '../../utils/format'
 
 export default defineComponent({
   name: 'EditorView',
-  components: { ErrorMessages },
+  components: { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ErrorMessages, Field, FieldDescription, FieldGroup, FieldLabel, Input, SendIcon, Skeleton, Spinner, Textarea },
   setup() {
     const auth = useAuthStore()
     const route = useRoute()

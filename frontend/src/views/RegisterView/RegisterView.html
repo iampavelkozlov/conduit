@@ -1,11 +1,35 @@
-<section class="center-column auth-page">
-  <h1>Sign up</h1>
-  <p><RouterLink :to="{ name: 'login' }">Have an account?</RouterLink></p>
-  <ErrorMessages :messages="errors" />
-  <form @submit.prevent="submit">
-    <div class="form-group"><input v-model="username" class="form-control form-control-lg" autocomplete="username" placeholder="Username" required /></div>
-    <div class="form-group"><input v-model="email" class="form-control form-control-lg" type="email" autocomplete="email" placeholder="Email" required /></div>
-    <div class="form-group"><input v-model="password" class="form-control form-control-lg" type="password" autocomplete="new-password" placeholder="Password" required /></div>
-    <button class="btn btn-lg btn-primary pull-right" type="submit" :disabled="submitting">Sign up</button>
-  </form>
+<section class="mx-auto flex w-full max-w-md items-center px-4 py-12 sm:px-0 sm:py-20">
+  <Card class="w-full">
+    <CardHeader>
+      <CardTitle>Create your account</CardTitle>
+      <CardDescription>Join the community and start sharing what you know.</CardDescription>
+    </CardHeader>
+    <form @submit.prevent="submit">
+      <CardContent class="flex flex-col gap-5">
+        <ErrorMessages :messages="errors" />
+        <FieldGroup>
+          <Field :data-invalid="errors.length > 0 || undefined">
+            <FieldLabel for="register-username">Username</FieldLabel>
+            <Input id="register-username" v-model="username" autocomplete="username" placeholder="jane-doe" required :aria-invalid="errors.length > 0 || undefined" />
+          </Field>
+          <Field :data-invalid="errors.length > 0 || undefined">
+            <FieldLabel for="register-email">Email</FieldLabel>
+            <Input id="register-email" v-model="email" type="email" autocomplete="email" placeholder="you@example.com" required :aria-invalid="errors.length > 0 || undefined" />
+          </Field>
+          <Field :data-invalid="errors.length > 0 || undefined">
+            <FieldLabel for="register-password">Password</FieldLabel>
+            <Input id="register-password" v-model="password" type="password" autocomplete="new-password" placeholder="Choose a secure password" required :aria-invalid="errors.length > 0 || undefined" />
+          </Field>
+        </FieldGroup>
+      </CardContent>
+      <CardFooter class="flex-col gap-4">
+        <Button class="w-full" type="submit" :disabled="submitting">
+          <Spinner v-if="submitting" data-icon="inline-start" />
+          <UserPlusIcon v-else data-icon="inline-start" />
+          {{ submitting ? 'Creating account...' : 'Create account' }}
+        </Button>
+        <p class="text-sm text-muted-foreground">Already have an account? <RouterLink class="font-medium text-primary" :to="{ name: 'login' }">Sign in</RouterLink></p>
+      </CardFooter>
+    </form>
+  </Card>
 </section>

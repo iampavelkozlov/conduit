@@ -1,3 +1,9 @@
-<ul v-if="messages.length" class="error-messages" role="alert">
-  <li v-for="message in messages" :key="message">{{ message }}</li>
-</ul>
+<Alert v-if="messages.length" variant="destructive" role="alert">
+  <CircleAlertIcon />
+  <AlertTitle>Something went wrong</AlertTitle>
+  <AlertDescription>
+    <ul class="flex list-disc flex-col gap-1 pl-4">
+      <li v-for="message in messages" :key="message">{{ message }}</li>
+    </ul>
+  </AlertDescription>
+</Alert>

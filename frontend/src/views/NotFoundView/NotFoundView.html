@@ -1,5 +1,12 @@
-<section class="not-found center-column text-center">
-  <p class="code">404</p>
-  <h1>Page not found</h1>
-  <RouterLink class="btn btn-primary" :to="{ name: 'home' }">Back to home</RouterLink>
+<section class="mx-auto flex min-h-[60vh] w-full max-w-3xl items-center px-4 py-12 sm:px-6">
+  <Empty class="rounded-xl border bg-card">
+    <EmptyHeader>
+      <EmptyMedia variant="icon"><SearchXIcon /></EmptyMedia>
+      <EmptyTitle>Page not found</EmptyTitle>
+      <EmptyDescription>The page may have moved, or the address might be incorrect.</EmptyDescription>
+    </EmptyHeader>
+    <EmptyContent>
+      <Button as-child><RouterLink :to="{ name: 'home' }"><ArrowLeftIcon data-icon="inline-start" />Back to home</RouterLink></Button>
+    </EmptyContent>
+  </Empty>
 </section>

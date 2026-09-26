@@ -1,43 +1,57 @@
-<div class="home-page">
-  <section class="banner">
-    <div class="container">
-      <h1>conduit</h1>
-      <p>A place to share your knowledge.</p>
+<div>
+  <section class="border-b bg-primary text-primary-foreground">
+    <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-14 sm:px-6 sm:py-20">
+      <div class="flex size-11 items-center justify-center rounded-xl bg-primary-foreground/15"><SparklesIcon class="size-5" aria-hidden="true" /></div>
+      <div class="flex max-w-2xl flex-col gap-3">
+        <h1 class="text-4xl font-semibold tracking-tight sm:text-5xl">Ideas worth sharing.</h1>
+        <p class="text-lg text-primary-foreground/80">Discover thoughtful articles from people who build, learn, and teach.</p>
+      </div>
     </div>
   </section>
-  <div class="container page page-grid">
-    <section>
-      <nav class="tabs" aria-label="Article feeds">
-        <button v-if="auth.isAuthenticated" class="tab button-tab" :class="{ active: following }" type="button" @click="openFeed('following')">
-          Your Feed
-        </button>
-        <button class="tab button-tab" :class="{ active: !following && !activeTag }" type="button" @click="openFeed('global')">
-          Global Feed
-        </button>
-        <span v-if="activeTag" class="tab active"># {{ activeTag }}</span>
-      </nav>
+
+  <div class="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:py-10">
+    <section class="flex min-w-0 flex-col gap-5">
+      <Tabs :model-value="following ? 'following' : activeTag ? 'tag' : 'global'">
+        <TabsList>
+          <TabsTrigger v-if="auth.isAuthenticated" value="following" @click="openFeed('following')">Your feed</TabsTrigger>
+          <TabsTrigger value="global" @click="openFeed('global')">Global feed</TabsTrigger>
+          <TabsTrigger v-if="activeTag" value="tag"><HashIcon />{{ activeTag }}</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <ErrorMessages :messages="errors" />
       <ArticleList :articles="articles" :loading="loading" @updated="replaceArticle" />
-      <nav v-if="pageCount > 1" class="pagination" aria-label="Article pages">
-        <RouterLink
-          v-for="number in pageCount"
-          :key="number"
-          class="page-link"
-          :class="{ active: number === page }"
-          :to="{ name: 'home', query: { ...$route.query, page: number } }"
-        >
-          {{ number }}
-        </RouterLink>
-      </nav>
+      <Pagination v-if="pageCount > 1" v-slot="{ page: currentPage }" :page="page" :items-per-page="10" :total="total" @update:page="openPage">
+        <PaginationContent v-slot="{ items }">
+          <PaginationPrevious />
+          <template v-for="(item, index) in items" :key="index">
+            <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === currentPage">{{ item.value }}</PaginationItem>
+          </template>
+          <PaginationNext />
+        </PaginationContent>
+      </Pagination>
     </section>
-    <aside class="sidebar">
-      <p>Popular Tags</p>
-      <div class="tag-list">
-        <RouterLink v-for="tag in tags" :key="tag" class="tag-pill tag-default" :to="{ name: 'home', query: { tag } }">
-          {{ tag }}
-        </RouterLink>
-        <span v-if="!tags.length && !loading" class="muted">No tags yet.</span>
-      </div>
+
+    <aside>
+      <Card class="lg:sticky lg:top-24">
+        <CardHeader>
+          <CardTitle>Popular tags</CardTitle>
+          <CardDescription>Jump into a topic people are writing about.</CardDescription>
+        </CardHeader>
+        <CardContent v-if="tags.length" class="flex flex-wrap gap-2">
+          <Button v-for="tag in tags" :key="tag" variant="secondary" size="sm" as-child>
+            <RouterLink :to="{ name: 'home', query: { tag } }"><HashIcon data-icon="inline-start" />{{ tag }}</RouterLink>
+          </Button>
+        </CardContent>
+        <CardContent v-else-if="!loading">
+          <Empty class="p-4">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><HashIcon /></EmptyMedia>
+              <EmptyTitle>No tags yet</EmptyTitle>
+              <EmptyDescription>Tags will appear as articles are published.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </CardContent>
+      </Card>
     </aside>
   </div>
 </div>

@@ -1,14 +1,59 @@
-<section class="center-column settings-page">
-  <h1>Your Settings</h1>
-  <ErrorMessages :messages="errors" />
-  <form @submit.prevent="submit">
-    <div class="form-group"><input v-model="image" class="form-control" type="url" placeholder="URL of profile picture" /></div>
-    <div class="form-group"><input v-model="username" class="form-control form-control-lg" autocomplete="username" placeholder="Your Name" required /></div>
-    <div class="form-group"><textarea v-model="bio" class="form-control form-control-lg" rows="6" placeholder="Short bio about you"></textarea></div>
-    <div class="form-group"><input v-model="email" class="form-control form-control-lg" type="email" autocomplete="email" placeholder="Email" required /></div>
-    <div class="form-group"><input v-model="password" class="form-control form-control-lg" type="password" autocomplete="new-password" placeholder="New Password" /></div>
-    <button class="btn btn-lg btn-primary pull-right" type="submit" :disabled="submitting">Update Settings</button>
-  </form>
-  <hr />
-  <button class="btn btn-outline-danger" type="button" @click="logout">Or click here to logout.</button>
+<section class="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
+  <Card>
+    <CardHeader>
+      <div class="flex items-center gap-4">
+        <Avatar class="size-14">
+          <AvatarImage :src="avatarUrl(image)" :alt="username" />
+          <AvatarFallback>{{ initials(username) }}</AvatarFallback>
+        </Avatar>
+        <div class="flex flex-col gap-1">
+          <CardTitle>Profile settings</CardTitle>
+          <CardDescription>Update how you appear across Conduit.</CardDescription>
+        </div>
+      </div>
+    </CardHeader>
+    <form @submit.prevent="submit">
+      <CardContent class="flex flex-col gap-5">
+        <ErrorMessages :messages="errors" />
+        <FieldGroup>
+          <Field>
+            <FieldLabel for="settings-image">Profile image URL</FieldLabel>
+            <Input id="settings-image" v-model="image" type="url" placeholder="https://example.com/avatar.jpg" />
+            <FieldDescription>Use a public image URL for your avatar.</FieldDescription>
+          </Field>
+          <Field :data-invalid="errors.length > 0 || undefined">
+            <FieldLabel for="settings-username">Username</FieldLabel>
+            <Input id="settings-username" v-model="username" autocomplete="username" required :aria-invalid="errors.length > 0 || undefined" />
+          </Field>
+          <Field>
+            <FieldLabel for="settings-bio">Bio</FieldLabel>
+            <Textarea id="settings-bio" v-model="bio" rows="5" placeholder="Tell the community a little about yourself." />
+          </Field>
+          <Field :data-invalid="errors.length > 0 || undefined">
+            <FieldLabel for="settings-email">Email</FieldLabel>
+            <Input id="settings-email" v-model="email" type="email" autocomplete="email" required :aria-invalid="errors.length > 0 || undefined" />
+          </Field>
+          <Field>
+            <FieldLabel for="settings-password">New password</FieldLabel>
+            <Input id="settings-password" v-model="password" type="password" autocomplete="new-password" placeholder="Leave blank to keep your password" />
+          </Field>
+        </FieldGroup>
+      </CardContent>
+      <CardFooter class="justify-end">
+        <Button type="submit" :disabled="submitting">
+          <Spinner v-if="submitting" data-icon="inline-start" />
+          <SaveIcon v-else data-icon="inline-start" />
+          {{ submitting ? 'Saving...' : 'Save changes' }}
+        </Button>
+      </CardFooter>
+    </form>
+    <Separator />
+    <CardFooter class="justify-between py-6">
+      <div class="flex flex-col gap-1">
+        <p class="font-medium">Sign out</p>
+        <p class="text-sm text-muted-foreground">End your current session on this device.</p>
+      </div>
+      <Button variant="outline" type="button" @click="logout"><LogOutIcon data-icon="inline-start" />Log out</Button>
+    </CardFooter>
+  </Card>
 </section>

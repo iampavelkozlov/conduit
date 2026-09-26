@@ -1,13 +1,42 @@
-<section class="wide-column editor-page">
-  <ErrorMessages :messages="errors" />
-  <p v-if="loading" class="loading">Loading article...</p>
-  <form v-else @submit.prevent="submit">
-    <div class="form-group"><input v-model="title" class="form-control form-control-lg" placeholder="Article Title" required /></div>
-    <div class="form-group"><input v-model="description" class="form-control" placeholder="What's this article about?" required /></div>
-    <div class="form-group"><textarea v-model="body" class="form-control" rows="10" placeholder="Write your article" required></textarea></div>
-    <div class="form-group"><input v-model="tags" class="form-control" placeholder="Enter comma-separated tags" /></div>
-    <button class="btn btn-lg btn-primary pull-right" type="submit" :disabled="submitting">
-      {{ editing ? 'Update Article' : 'Publish Article' }}
-    </button>
-  </form>
+<section class="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+  <Card>
+    <CardHeader>
+      <CardTitle>{{ editing ? 'Edit article' : 'Create a new article' }}</CardTitle>
+      <CardDescription>{{ editing ? 'Refine your story and keep your readers up to date.' : 'Share an idea, lesson, or experience with the community.' }}</CardDescription>
+    </CardHeader>
+    <CardContent v-if="loading" class="flex flex-col gap-4">
+      <Skeleton class="h-10 w-full" /><Skeleton class="h-10 w-full" /><Skeleton class="h-64 w-full" /><Skeleton class="h-10 w-full" />
+    </CardContent>
+    <form v-else @submit.prevent="submit">
+      <CardContent class="flex flex-col gap-5">
+        <ErrorMessages :messages="errors" />
+        <FieldGroup>
+          <Field :data-invalid="errors.length > 0 || undefined">
+            <FieldLabel for="article-title">Title</FieldLabel>
+            <Input id="article-title" v-model="title" placeholder="A clear, useful title" required :aria-invalid="errors.length > 0 || undefined" />
+          </Field>
+          <Field :data-invalid="errors.length > 0 || undefined">
+            <FieldLabel for="article-description">Description</FieldLabel>
+            <Input id="article-description" v-model="description" placeholder="A short summary for the feed" required :aria-invalid="errors.length > 0 || undefined" />
+          </Field>
+          <Field :data-invalid="errors.length > 0 || undefined">
+            <FieldLabel for="article-body">Article body</FieldLabel>
+            <Textarea id="article-body" v-model="body" rows="14" placeholder="Write your article..." required :aria-invalid="errors.length > 0 || undefined" />
+          </Field>
+          <Field>
+            <FieldLabel for="article-tags">Tags</FieldLabel>
+            <Input id="article-tags" v-model="tags" placeholder="vue, go, architecture" />
+            <FieldDescription>Separate tags with commas.</FieldDescription>
+          </Field>
+        </FieldGroup>
+      </CardContent>
+      <CardFooter class="justify-end">
+        <Button type="submit" :disabled="submitting">
+          <Spinner v-if="submitting" data-icon="inline-start" />
+          <SendIcon v-else data-icon="inline-start" />
+          {{ submitting ? 'Saving...' : editing ? 'Update article' : 'Publish article' }}
+        </Button>
+      </CardFooter>
+    </form>
+  </Card>
 </section>

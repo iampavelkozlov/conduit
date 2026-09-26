@@ -1,6 +1,9 @@
-<footer>
-  <div class="container footer-content">
-    <RouterLink class="logo" :to="{ name: 'home' }">conduit</RouterLink>
-    <span>An interactive learning project. Code &amp; design licensed under MIT.</span>
+<footer class="mt-auto border-t bg-card">
+  <div class="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <RouterLink class="inline-flex items-center gap-2 font-semibold text-foreground" :to="{ name: 'home' }">
+      <BookOpenIcon class="size-4 text-primary" aria-hidden="true" />
+      conduit
+    </RouterLink>
+    <p class="text-sm text-muted-foreground">A community for sharing practical knowledge.</p>
   </div>
 </footer>

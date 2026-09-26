@@ -1,13 +1,19 @@
 import { defineComponent, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { UserPlusIcon } from '@lucide/vue'
 
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
 import { errorMessages } from '../../api/errors'
 import ErrorMessages from '../../components/ErrorMessages/ErrorMessages.vue'
 import { useAuthStore } from '../../stores/auth'
 
 export default defineComponent({
   name: 'RegisterView',
-  components: { ErrorMessages },
+  components: { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ErrorMessages, Field, FieldGroup, FieldLabel, Input, Spinner, UserPlusIcon },
   setup() {
     const auth = useAuthStore()
     const router = useRouter()

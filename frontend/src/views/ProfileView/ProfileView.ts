@@ -1,17 +1,24 @@
 import { computed, defineComponent, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { SettingsIcon, UserMinusIcon, UserPlusIcon } from '@lucide/vue'
 
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getArticles, getProfile, setFollowing } from '../../api/conduit'
 import { errorMessages } from '../../api/errors'
 import type { ArticleSummary, Profile } from '../../api/types'
 import ArticleList from '../../components/ArticleList/ArticleList.vue'
 import ErrorMessages from '../../components/ErrorMessages/ErrorMessages.vue'
 import { useAuthStore } from '../../stores/auth'
-import { avatarUrl } from '../../utils/format'
+import { avatarUrl, initials } from '../../utils/format'
 
 export default defineComponent({
   name: 'ProfileView',
-  components: { ArticleList, ErrorMessages },
+  components: { ArticleList, Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ErrorMessages, SettingsIcon, Skeleton, Spinner, Tabs, TabsList, TabsTrigger, UserMinusIcon, UserPlusIcon },
   setup() {
     const auth = useAuthStore()
     const route = useRoute()
@@ -66,6 +73,6 @@ export default defineComponent({
 
     watch(() => route.fullPath, load, { immediate: true })
 
-    return { auth, profile, articles, errors, loading, followingBusy, username, favorites, ownProfile, toggleFollow, replaceArticle, avatarUrl }
+    return { auth, profile, articles, errors, loading, followingBusy, username, favorites, ownProfile, toggleFollow, replaceArticle, avatarUrl, initials }
   },
 })

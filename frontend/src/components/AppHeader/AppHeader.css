@@ -1,15 +1,1 @@
-.header { background: #fff; }
-.navbar { display: flex; align-items: center; justify-content: space-between; min-height: 58px; }
-.brand { color: var(--green); font-family: Georgia, serif; font-size: 1.5rem; font-weight: 700; }
-.brand:hover { text-decoration: none; }
-.nav-links { display: flex; align-items: center; gap: .25rem; }
-.nav-link { padding: .45rem .6rem; color: rgba(0, 0, 0, .45); background: none; border: 0; }
-.nav-link:hover, .nav-link.router-link-active { color: rgba(0, 0, 0, .8); text-decoration: none; }
-.profile-link { display: inline-flex; align-items: center; gap: .35rem; }
-.profile-link img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
-.logout { font: inherit; }
-@media (max-width: 700px) {
-  .navbar { align-items: flex-start; padding-block: .65rem; }
-  .nav-links { justify-content: flex-end; flex-wrap: wrap; }
-  .nav-link { padding: .3rem .45rem; font-size: .9rem; }
-}
+

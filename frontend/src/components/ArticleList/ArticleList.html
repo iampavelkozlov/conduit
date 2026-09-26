@@ -1,11 +1,18 @@
-<div>
-  <p v-if="loading" class="loading">Loading articles...</p>
-  <p v-else-if="articles.length === 0" class="empty-state">No articles are here... yet.</p>
-  <ArticlePreview
-    v-for="article in articles"
-    v-else
-    :key="article.slug"
-    :article="article"
-    @updated="$emit('updated', $event)"
-  />
+<div class="flex flex-col gap-4">
+  <template v-if="loading">
+    <Card v-for="index in 3" :key="index">
+      <CardHeader>
+        <div class="flex items-center gap-3"><Skeleton class="size-10 rounded-full" /><div class="flex flex-1 flex-col gap-2"><Skeleton class="h-4 w-28" /><Skeleton class="h-3 w-20" /></div></div>
+      </CardHeader>
+      <CardContent class="flex flex-col gap-3"><Skeleton class="h-6 w-3/4" /><Skeleton class="h-4 w-full" /></CardContent>
+    </Card>
+  </template>
+  <Empty v-else-if="articles.length === 0" class="rounded-xl border bg-card">
+    <EmptyHeader>
+      <EmptyMedia variant="icon"><FileTextIcon /></EmptyMedia>
+      <EmptyTitle>No articles yet</EmptyTitle>
+      <EmptyDescription>Try another feed or be the first to publish something.</EmptyDescription>
+    </EmptyHeader>
+  </Empty>
+  <ArticlePreview v-for="article in articles" v-else :key="article.slug" :article="article" @updated="$emit('updated', $event)" />
 </div>

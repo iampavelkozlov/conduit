@@ -1,23 +1,44 @@
-<div class="profile-page">
-  <section v-if="profile" class="user-info">
-    <div class="container profile-content">
-      <img class="user-image" :src="avatarUrl(profile.image)" alt="" />
-      <h1>{{ profile.username }}</h1>
-      <p>{{ profile.bio }}</p>
-      <RouterLink v-if="ownProfile" class="btn btn-sm btn-outline-secondary action-button" :to="{ name: 'settings' }">⚙ Edit Profile Settings</RouterLink>
-      <button v-else class="btn btn-sm btn-outline-secondary action-button" type="button" :disabled="followingBusy" @click="toggleFollow">
-        + {{ profile.following ? 'Unfollow' : 'Follow' }} {{ profile.username }}
-      </button>
-    </div>
-  </section>
-  <section class="profile-articles">
-    <div class="container narrow">
-      <ErrorMessages :messages="errors" />
-      <nav class="tabs" aria-label="Profile articles">
-        <RouterLink class="tab" :class="{ active: !favorites }" :to="{ name: 'profile', params: { username } }">My Articles</RouterLink>
-        <RouterLink class="tab" :class="{ active: favorites }" :to="{ name: 'profile', params: { username }, query: { tab: 'favorites' } }">Favorited Articles</RouterLink>
-      </nav>
-      <ArticleList :articles="articles" :loading="loading" @updated="replaceArticle" />
-    </div>
+<div class="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12">
+  <ErrorMessages :messages="errors" />
+
+  <Card v-if="loading && !profile">
+    <CardHeader class="items-center text-center"><Skeleton class="size-24 rounded-full" /><Skeleton class="h-7 w-40" /><Skeleton class="h-4 w-64" /></CardHeader>
+    <CardContent><Skeleton class="h-10 w-full" /></CardContent>
+  </Card>
+
+  <Card v-if="profile">
+    <CardHeader class="items-center text-center">
+      <Avatar class="size-24">
+        <AvatarImage :src="avatarUrl(profile.image)" :alt="profile.username" />
+        <AvatarFallback>{{ initials(profile.username) }}</AvatarFallback>
+      </Avatar>
+      <CardTitle>{{ profile.username }}</CardTitle>
+      <CardDescription>{{ profile.bio || 'This author has not added a bio yet.' }}</CardDescription>
+    </CardHeader>
+    <CardFooter class="justify-center">
+      <Button v-if="ownProfile" variant="outline" as-child>
+        <RouterLink :to="{ name: 'settings' }"><SettingsIcon data-icon="inline-start" />Edit profile</RouterLink>
+      </Button>
+      <Button v-else :variant="profile.following ? 'secondary' : 'default'" type="button" :disabled="followingBusy" @click="toggleFollow">
+        <Spinner v-if="followingBusy" data-icon="inline-start" />
+        <UserMinusIcon v-else-if="profile.following" data-icon="inline-start" />
+        <UserPlusIcon v-else data-icon="inline-start" />
+        {{ profile.following ? 'Unfollow' : 'Follow' }} {{ profile.username }}
+      </Button>
+    </CardFooter>
+  </Card>
+
+  <section class="flex flex-col gap-5">
+    <Tabs :model-value="favorites ? 'favorites' : 'articles'">
+      <TabsList>
+        <TabsTrigger value="articles" as-child>
+          <RouterLink :to="{ name: 'profile', params: { username } }">Articles</RouterLink>
+        </TabsTrigger>
+        <TabsTrigger value="favorites" as-child>
+          <RouterLink :to="{ name: 'profile', params: { username }, query: { tab: 'favorites' } }">Favorites</RouterLink>
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+    <ArticleList :articles="articles" :loading="loading" @updated="replaceArticle" />
   </section>
 </div>

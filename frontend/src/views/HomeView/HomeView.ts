@@ -1,6 +1,12 @@
 import { computed, defineComponent, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { HashIcon, SparklesIcon } from '@lucide/vue'
 
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getArticles, getFeed, getTags } from '../../api/conduit'
 import { errorMessages } from '../../api/errors'
 import type { ArticleSummary } from '../../api/types'
@@ -12,7 +18,7 @@ const pageSize = 10
 
 export default defineComponent({
   name: 'HomeView',
-  components: { ArticleList, ErrorMessages },
+  components: { ArticleList, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, ErrorMessages, HashIcon, Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, SparklesIcon, Tabs, TabsList, TabsTrigger },
   setup() {
     const auth = useAuthStore()
     const route = useRoute()
@@ -57,12 +63,17 @@ export default defineComponent({
       void router.push(feed === 'following' ? { name: 'home', query: { feed: 'following' } } : { name: 'home' })
     }
 
+    function openPage(nextPage: number) {
+      void router.push({ name: 'home', query: { ...route.query, page: nextPage } })
+    }
+
     watch(() => route.fullPath, load, { immediate: true })
 
     return {
       auth,
       articles,
       tags,
+      total,
       loading,
       errors,
       page,
@@ -71,6 +82,7 @@ export default defineComponent({
       following,
       replaceArticle,
       openFeed,
+      openPage,
     }
   },
 })
