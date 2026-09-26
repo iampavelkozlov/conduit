@@ -39,6 +39,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --syntax-comment: oklch(0.52 0 0);
+  --syntax-keyword: oklch(0.48 0.17 305);
+  --syntax-literal: oklch(0.52 0.19 25);
+  --syntax-string: oklch(0.48 0.14 65);
+  --syntax-title: oklch(0.47 0.16 250);
+  --syntax-variable: oklch(0.5 0.14 285);
 }
 
 .dark {
@@ -68,6 +74,12 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: oklch(0.556 0 0);
+  --syntax-comment: oklch(0.68 0 0);
+  --syntax-keyword: oklch(0.76 0.14 305);
+  --syntax-literal: oklch(0.75 0.16 25);
+  --syntax-string: oklch(0.78 0.13 75);
+  --syntax-title: oklch(0.76 0.13 250);
+  --syntax-variable: oklch(0.78 0.12 285);
 }
 
 @theme inline {
@@ -209,6 +221,60 @@
 .rich-text pre code {
   background: transparent;
   padding: 0;
+}
+
+.rich-text .hljs-comment,
+.rich-text .hljs-quote {
+  color: var(--syntax-comment);
+  font-style: italic;
+}
+
+.rich-text .hljs-keyword,
+.rich-text .hljs-selector-tag,
+.rich-text .hljs-subst {
+  color: var(--syntax-keyword);
+}
+
+.rich-text .hljs-literal,
+.rich-text .hljs-number,
+.rich-text .hljs-tag {
+  color: var(--syntax-literal);
+}
+
+.rich-text .hljs-attr,
+.rich-text .hljs-doctag,
+.rich-text .hljs-regexp,
+.rich-text .hljs-string {
+  color: var(--syntax-string);
+}
+
+.rich-text .hljs-built_in,
+.rich-text .hljs-name,
+.rich-text .hljs-section,
+.rich-text .hljs-title,
+.rich-text .hljs-type {
+  color: var(--syntax-title);
+}
+
+.rich-text .hljs-attribute,
+.rich-text .hljs-bullet,
+.rich-text .hljs-meta,
+.rich-text .hljs-selector-attr,
+.rich-text .hljs-selector-class,
+.rich-text .hljs-selector-id,
+.rich-text .hljs-symbol,
+.rich-text .hljs-template-tag,
+.rich-text .hljs-template-variable,
+.rich-text .hljs-variable {
+  color: var(--syntax-variable);
+}
+
+.rich-text .hljs-emphasis {
+  font-style: italic;
+}
+
+.rich-text .hljs-strong {
+  font-weight: 700;
 }
 
 .rich-text a {

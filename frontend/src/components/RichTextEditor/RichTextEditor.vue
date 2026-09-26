@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { Placeholder } from '@tiptap/extension-placeholder'
 import { StarterKit } from '@tiptap/starter-kit'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
@@ -45,6 +46,7 @@ import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { cn } from '@/lib/utils'
 import { sanitizeRichText } from '@/utils/richText'
+import { lowlight } from '@/utils/syntaxHighlight'
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -68,12 +70,18 @@ const editor = useEditor({
   content: sanitizeRichText(props.modelValue),
   extensions: [
     StarterKit.configure({
+      codeBlock: false,
       heading: { levels: [2, 3] },
       link: {
         autolink: true,
         defaultProtocol: 'https',
         openOnClick: false,
       },
+    }),
+    CodeBlockLowlight.configure({
+      lowlight,
+      enableTabIndentation: true,
+      tabSize: 2,
     }),
     Placeholder.configure({ placeholder: props.placeholder }),
   ],

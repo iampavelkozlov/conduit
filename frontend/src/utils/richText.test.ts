@@ -29,6 +29,12 @@ describe('rich text utilities', () => {
     )
   })
 
+  it('preserves only a safe language class on code blocks', () => {
+    expect(sanitizeRichText(
+      '<p class="hidden">Text</p><pre><code class="language-js injected">const value = 1</code></pre>',
+    )).toBe('<p>Text</p><pre><code class="language-js">const value = 1</code></pre>')
+  })
+
   it.each(['', '<p></p>', '<p>   </p>'])('recognizes empty content: %s', (content) => {
     expect(isRichTextEmpty(content)).toBe(true)
   })

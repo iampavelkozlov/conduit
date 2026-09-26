@@ -23,10 +23,22 @@ export function normalizeRichText(value: string | null | undefined) {
 }
 
 export function sanitizeRichText(value: string | null | undefined) {
-  return String(DOMPurify.sanitize(normalizeRichText(value), {
+  const sanitized = String(DOMPurify.sanitize(normalizeRichText(value), {
     USE_PROFILES: { html: true },
-    ALLOWED_ATTR: ['href', 'rel', 'target'],
+    ALLOWED_ATTR: ['class', 'href', 'rel', 'target'],
   }))
+  const document = new DOMParser().parseFromString(sanitized, 'text/html')
+
+  document.body.querySelectorAll<HTMLElement>('[class]').forEach((element) => {
+    const languageClass = element.tagName === 'CODE'
+      ? [...element.classList].find((className) => /^language-[\w-]+$/.test(className))
+      : undefined
+
+    if (languageClass) element.className = languageClass
+    else element.removeAttribute('class')
+  })
+
+  return document.body.innerHTML
 }
 
 export function isRichTextEmpty(value: string | null | undefined) {
