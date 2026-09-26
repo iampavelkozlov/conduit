@@ -21,7 +21,8 @@
           </Field>
           <Field :data-invalid="errors.length > 0 || undefined">
             <FieldLabel for="article-body">Article body</FieldLabel>
-            <Textarea id="article-body" v-model="body" rows="14" placeholder="Write your article..." required :aria-invalid="errors.length > 0 || undefined" />
+            <RichTextEditor id="article-body" v-model="body" placeholder="Write your article…" :invalid="errors.length > 0" />
+            <FieldDescription>Use headings, lists, quotes, links, and code to structure your story.</FieldDescription>
           </Field>
           <Field>
             <FieldLabel for="article-tags">Tags</FieldLabel>

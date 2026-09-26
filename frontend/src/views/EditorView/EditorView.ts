@@ -8,16 +8,17 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
-import { Textarea } from '@/components/ui/textarea'
+import RichTextEditor from '@/components/RichTextEditor/RichTextEditor.vue'
 import { createArticle, getArticle, updateArticle } from '../../api/conduit'
 import { errorMessages } from '../../api/errors'
 import ErrorMessages from '../../components/ErrorMessages/ErrorMessages.vue'
 import { useAuthStore } from '../../stores/auth'
 import { splitTags } from '../../utils/format'
+import { isRichTextEmpty } from '../../utils/richText'
 
 export default defineComponent({
   name: 'EditorView',
-  components: { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ErrorMessages, Field, FieldDescription, FieldGroup, FieldLabel, Input, SendIcon, Skeleton, Spinner, Textarea },
+  components: { Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ErrorMessages, Field, FieldDescription, FieldGroup, FieldLabel, Input, RichTextEditor, SendIcon, Skeleton, Spinner },
   setup() {
     const auth = useAuthStore()
     const route = useRoute()
@@ -54,8 +55,13 @@ export default defineComponent({
     }
 
     async function submit() {
-      submitting.value = true
       errors.value = []
+      if (isRichTextEmpty(body.value)) {
+        errors.value = ['article body can’t be blank.']
+        return
+      }
+
+      submitting.value = true
       const details = { title: title.value, description: description.value, body: body.value, tagList: splitTags(tags.value) }
       try {
         const article = editing.value ? await updateArticle(slug.value, details) : await createArticle(details)

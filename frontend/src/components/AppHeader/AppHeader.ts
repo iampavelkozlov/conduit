@@ -5,6 +5,7 @@ import { BookOpenIcon, HomeIcon, LogInIcon, LogOutIcon, MenuIcon, PenLineIcon, S
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import ThemeToggle from '@/components/ThemeToggle/ThemeToggle.vue'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +55,7 @@ export default defineComponent({
     SheetHeader,
     SheetTitle,
     SheetTrigger,
+    ThemeToggle,
     UserPlusIcon,
   },
   setup() {

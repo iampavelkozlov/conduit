@@ -27,7 +27,8 @@
           </Field>
           <Field>
             <FieldLabel for="settings-bio">Bio</FieldLabel>
-            <Textarea id="settings-bio" v-model="bio" rows="5" placeholder="Tell the community a little about yourself." />
+            <RichTextEditor id="settings-bio" v-model="bio" compact placeholder="Tell the community a little about yourself…" />
+            <FieldDescription>Formatting, lists, links, and quotes are supported.</FieldDescription>
           </Field>
           <Field :data-invalid="errors.length > 0 || undefined">
             <FieldLabel for="settings-email">Email</FieldLabel>

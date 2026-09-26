@@ -13,7 +13,8 @@
         <AvatarFallback>{{ initials(profile.username) }}</AvatarFallback>
       </Avatar>
       <CardTitle>{{ profile.username }}</CardTitle>
-      <CardDescription>{{ profile.bio || 'This author has not added a bio yet.' }}</CardDescription>
+      <RichTextContent v-if="profile.bio" class="max-w-2xl text-left text-muted-foreground" :content="profile.bio" />
+      <CardDescription v-else>This author has not added a bio yet.</CardDescription>
     </CardHeader>
     <CardFooter class="justify-center">
       <Button v-if="ownProfile" variant="outline" as-child>

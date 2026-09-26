@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import RichTextContent from '@/components/RichTextContent/RichTextContent.vue'
 import { getArticles, getProfile, setFollowing } from '../../api/conduit'
 import { errorMessages } from '../../api/errors'
 import type { ArticleSummary, Profile } from '../../api/types'
@@ -18,7 +19,7 @@ import { avatarUrl, initials } from '../../utils/format'
 
 export default defineComponent({
   name: 'ProfileView',
-  components: { ArticleList, Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ErrorMessages, SettingsIcon, Skeleton, Spinner, Tabs, TabsList, TabsTrigger, UserMinusIcon, UserPlusIcon },
+  components: { ArticleList, Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, ErrorMessages, RichTextContent, SettingsIcon, Skeleton, Spinner, Tabs, TabsList, TabsTrigger, UserMinusIcon, UserPlusIcon },
   setup() {
     const auth = useAuthStore()
     const route = useRoute()

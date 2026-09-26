@@ -30,7 +30,7 @@
         </div>
       </CardHeader>
       <CardContent>
-        <p class="whitespace-pre-wrap text-base leading-8">{{ article.body }}</p>
+        <RichTextContent :content="article.body" />
       </CardContent>
       <CardFooter class="flex-wrap gap-2">
         <Badge v-for="tag in article.tagList" :key="tag" variant="secondary">{{ tag }}</Badge>

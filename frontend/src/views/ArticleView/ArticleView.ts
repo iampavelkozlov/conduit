@@ -12,6 +12,7 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
+import RichTextContent from '@/components/RichTextContent/RichTextContent.vue'
 import { addComment, deleteComment, getArticle, getComments } from '../../api/conduit'
 import { errorMessages } from '../../api/errors'
 import type { Article, Comment } from '../../api/types'
@@ -22,7 +23,7 @@ import { avatarUrl, formatDate, initials } from '../../utils/format'
 
 export default defineComponent({
   name: 'ArticleView',
-  components: { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, ArticleActions, Avatar, AvatarFallback, AvatarImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, ErrorMessages, Field, FieldGroup, FieldLabel, MessageSquareIcon, SendIcon, Skeleton, Spinner, Textarea, Trash2Icon },
+  components: { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, ArticleActions, Avatar, AvatarFallback, AvatarImage, Badge, Button, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, ErrorMessages, Field, FieldGroup, FieldLabel, MessageSquareIcon, RichTextContent, SendIcon, Skeleton, Spinner, Textarea, Trash2Icon },
   setup() {
     const auth = useAuthStore()
     const route = useRoute()

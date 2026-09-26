@@ -1,14 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import ArticleView from '../views/ArticleView/ArticleView.vue'
-import EditorView from '../views/EditorView/EditorView.vue'
-import HomeView from '../views/HomeView/HomeView.vue'
-import LoginView from '../views/LoginView/LoginView.vue'
-import NotFoundView from '../views/NotFoundView/NotFoundView.vue'
-import ProfileView from '../views/ProfileView/ProfileView.vue'
-import RegisterView from '../views/RegisterView/RegisterView.vue'
-import SettingsView from '../views/SettingsView/SettingsView.vue'
 import { useAuthStore } from '../stores/auth'
+
+const ArticleView = () => import('../views/ArticleView/ArticleView.vue')
+const EditorView = () => import('../views/EditorView/EditorView.vue')
+const HomeView = () => import('../views/HomeView/HomeView.vue')
+const LoginView = () => import('../views/LoginView/LoginView.vue')
+const NotFoundView = () => import('../views/NotFoundView/NotFoundView.vue')
+const ProfileView = () => import('../views/ProfileView/ProfileView.vue')
+const RegisterView = () => import('../views/RegisterView/RegisterView.vue')
+const SettingsView = () => import('../views/SettingsView/SettingsView.vue')
 
 export const router = createRouter({
   history: createWebHistory(),

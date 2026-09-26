@@ -7,55 +7,58 @@
       conduit
     </RouterLink>
 
-    <div class="hidden items-center gap-1 md:flex">
-      <Button variant="ghost" as-child>
-        <RouterLink :to="{ name: 'home' }"><HomeIcon data-icon="inline-start" />Home</RouterLink>
-      </Button>
-      <template v-if="user">
+    <div class="flex items-center gap-1">
+      <div class="hidden items-center gap-1 md:flex">
         <Button variant="ghost" as-child>
-          <RouterLink :to="{ name: 'editor' }"><PenLineIcon data-icon="inline-start" />New article</RouterLink>
+          <RouterLink :to="{ name: 'home' }"><HomeIcon data-icon="inline-start" />Home</RouterLink>
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="ghost">
-              <Avatar class="size-7">
-                <AvatarImage :src="avatarUrl(user.image)" :alt="user.username" />
-                <AvatarFallback>{{ initials(user.username) }}</AvatarFallback>
-              </Avatar>
-              {{ user.username }}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" class="w-56">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>My account</DropdownMenuLabel>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem as-child>
-                <RouterLink :to="{ name: 'profile', params: { username: user.username } }">Profile</RouterLink>
-              </DropdownMenuItem>
-              <DropdownMenuItem as-child>
-                <RouterLink :to="{ name: 'settings' }"><SettingsIcon />Settings</RouterLink>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem @select="logout"><LogOutIcon />Log out</DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </template>
-      <template v-else>
-        <Button variant="ghost" as-child>
-          <RouterLink :to="{ name: 'login' }"><LogInIcon data-icon="inline-start" />Sign in</RouterLink>
-        </Button>
-        <Button as-child>
-          <RouterLink :to="{ name: 'register' }"><UserPlusIcon data-icon="inline-start" />Sign up</RouterLink>
-        </Button>
-      </template>
-    </div>
+        <template v-if="user">
+          <Button variant="ghost" as-child>
+            <RouterLink :to="{ name: 'editor' }"><PenLineIcon data-icon="inline-start" />New article</RouterLink>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="ghost">
+                <Avatar class="size-7">
+                  <AvatarImage :src="avatarUrl(user.image)" :alt="user.username" />
+                  <AvatarFallback>{{ initials(user.username) }}</AvatarFallback>
+                </Avatar>
+                {{ user.username }}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-56">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>My account</DropdownMenuLabel>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem as-child>
+                  <RouterLink :to="{ name: 'profile', params: { username: user.username } }">Profile</RouterLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem as-child>
+                  <RouterLink :to="{ name: 'settings' }"><SettingsIcon />Settings</RouterLink>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem @select="logout"><LogOutIcon />Log out</DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </template>
+        <template v-else>
+          <Button variant="ghost" as-child>
+            <RouterLink :to="{ name: 'login' }"><LogInIcon data-icon="inline-start" />Sign in</RouterLink>
+          </Button>
+          <Button as-child>
+            <RouterLink :to="{ name: 'register' }"><UserPlusIcon data-icon="inline-start" />Sign up</RouterLink>
+          </Button>
+        </template>
+      </div>
 
-    <Sheet>
+      <ThemeToggle />
+
+      <Sheet>
       <SheetTrigger as-child>
         <Button class="md:hidden" variant="outline" size="icon" aria-label="Open navigation">
           <MenuIcon />
@@ -112,6 +115,7 @@
           </template>
         </div>
       </SheetContent>
-    </Sheet>
+      </Sheet>
+    </div>
   </nav>
 </header>
