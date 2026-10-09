@@ -39,6 +39,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Verify canonical API inputs
+        run: make verify-contract
+
       - name: Regenerate code and architecture graph
         run: |
           make generate

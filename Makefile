@@ -18,7 +18,7 @@ DB_DSN ?= postgres://postgres:postgres@localhost:5432/conduit?sslmode=disable
 COVERAGE_PROFILE ?= coverage.out
 COVERAGE_BADGE ?= docs/coverage.svg
 
-.PHONY: oapi-codegen gen-http go-wrap goose-install migrate sqlc-install sqlc wire mocks wrap generate golangci-lint-install lint go-arch-lint-install arch-lint arch-graph go-test-coverage-install coverage badges quality
+.PHONY: oapi-codegen gen-http go-wrap goose-install migrate sqlc-install sqlc wire mocks wrap generate golangci-lint-install lint go-arch-lint-install arch-lint arch-graph go-test-coverage-install coverage badges quality test vet frontend-install frontend-generate frontend-test frontend-typecheck frontend-build verify-backend verify-frontend verify-generated verify-contract verify test-integration
 
 -include .env
 export
@@ -83,10 +83,65 @@ go-test-coverage-install:
 	fi
 
 coverage: go-test-coverage-install
-	go test ./... -covermode=atomic -coverprofile=$(COVERAGE_PROFILE)
+	go test $$(go list ./... | grep -v '/frontend/node_modules/') -covermode=atomic -coverprofile=$(COVERAGE_PROFILE)
 	$(GO_TEST_COVERAGE) --config .testcoverage.yml --profile $(COVERAGE_PROFILE) --badge-file-name $(COVERAGE_BADGE)
 
 badges:
 	./scripts/generate-badges.sh
 
 quality: lint arch-lint coverage
+
+test:
+	go test -race -count=1 $$(go list ./... | grep -v '/frontend/node_modules/')
+
+vet:
+	go vet $$(go list ./... | grep -v '/frontend/node_modules/')
+
+frontend-install:
+	npm --prefix frontend ci
+
+frontend-generate:
+	npm --prefix frontend run generate:api
+
+frontend-test:
+	npm --prefix frontend test
+
+frontend-typecheck:
+	npm --prefix frontend run typecheck
+
+frontend-build:
+	npm --prefix frontend run build
+
+verify-backend:
+	$(MAKE) quality
+	$(MAKE) test
+	$(MAKE) vet
+
+verify-frontend:
+	$(MAKE) frontend-test
+	$(MAKE) frontend-typecheck
+	$(MAKE) frontend-build
+	git diff --exit-code -- frontend/src/api/generated/schema.d.ts
+
+verify-generated:
+	$(MAKE) generate
+	$(MAKE) arch-graph
+	$(MAKE) frontend-generate
+	@generated_status="$$(git status --porcelain -- internal/gen cmd/server/wire_gen.go internal/metrics/querier_metrics_gen.go docs/architecture.svg frontend/src/api/generated/schema.d.ts $$(find internal -name 'mock_*.go' -type f -print))"; \
+	if [ -n "$$generated_status" ]; then \
+		echo "Generated files are out of date:"; \
+		echo "$$generated_status"; \
+		exit 1; \
+	fi
+
+verify-contract:
+	./scripts/verify-upstream-contract.sh
+
+verify:
+	$(MAKE) verify-generated
+	$(MAKE) verify-contract
+	$(MAKE) verify-backend
+	$(MAKE) verify-frontend
+
+test-integration:
+	bash apitests/run-hurl-tests.sh

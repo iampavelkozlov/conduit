@@ -65,6 +65,8 @@ linters:
       enable-all: true
   exclusions:
     generated: strict
+    paths:
+      - (^|/)frontend/node_modules/
     presets:
       - common-false-positives
       - std-error-handling
@@ -85,6 +87,8 @@ formatters:
         - conduit
   exclusions:
     generated: strict
+    paths:
+      - (^|/)frontend/node_modules/
 
 issues:
   max-issues-per-linter: 0
